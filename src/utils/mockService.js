@@ -1,41 +1,84 @@
 // src/utils/mockService.js
 import { THEMES } from "./constants";
 
-// 你的 mock 保留
+/**
+ * 這裡保留「萬一 API 掛掉」的後備 mock
+ * 只要格式跟前端 components 要的一樣，就不會炸
+ */
 const generateMockContent = (themeId, level) => {
-  // ... 你原本 mock
+  const themeData = THEMES.find(t => t.id === themeId);
+  const themeLabelEn = themeData?.labelEn || "Topic";
+  const themeLabelZh = themeData?.labelZh || "主題";
+
   return {
-    titleEn: "Mock Title",
-    titleZh: "模擬標題",
-    articleEn: "Mock article...",
-    articleZh: "模擬文章...",
-    vocabulary: [],
+    themeId,
+    level,
+    titleEn: themeLabelEn,
+    titleZh: themeLabelZh,
+    articleEn: "Mock article (AI unavailable).",
+    articleZh: "模擬文章（AI 暫時無法使用）。",
+    article: {
+      en: "Mock article (AI unavailable).",
+      zh: "模擬文章（AI 暫時無法使用）。"
+    },
+    vocabulary: [
+      { word: themeLabelEn.toLowerCase(), pos: "noun", meaningZh: themeLabelZh, exampleEn: "", exampleZh: "" }
+    ],
+    vocab: [
+      { word: themeLabelEn.toLowerCase(), pos: "noun", meaningZh: themeLabelZh, exampleEn: "", exampleZh: "" }
+    ],
     quiz: [],
+    questions: []
   };
 };
 
-// ✅ 只打 API
+/**
+ * ✅ 正式的 generateContent
+ * 只做一件事：打你部署在 Vercel 的 API
+ */
 export const generateContent = async (themeId, level) => {
   try {
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ themeId, level }),
+      body: JSON.stringify({ themeId, level })
     });
 
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      console.warn("API failed, fallback to mock:", res.status);
+      return generateMockContent(themeId, level);
+    }
 
     const json = await res.json();
-    return json.data;
-  } catch (e) {
-    console.error("generateContent failed, fallback mock", e);
+    // API 回的是 { provider, data }
+    const data = json?.data;
+
+    if (!data) {
+      console.warn("API returned empty data, fallback to mock");
+      return generateMockContent(themeId, level);
+    }
+
+    return data;
+  } catch (err) {
+    console.error("Fetch /api/generate error:", err);
     return generateMockContent(themeId, level);
   }
 };
 
-// getTreeLayout 原本怎麼寫就留著
+/**
+ * 原本的 getTreeLayout 保留
+ */
 export const getTreeLayout = (themes) => {
-  const rows = [[], [], [], []];
-  themes.forEach((t, i) => rows[i % rows.length].push(t));
-  return rows;
+  const layout = [];
+  let currentIndex = 0;
+  let rowSize = 1;
+
+  while (currentIndex < themes.length) {
+    const row = themes.slice(currentIndex, currentIndex + rowSize);
+    layout.push(row);
+    currentIndex += rowSize;
+    rowSize++;
+  }
+
+  return layout;
 };
