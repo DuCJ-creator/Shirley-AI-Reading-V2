@@ -2,6 +2,9 @@
   "name": "shirley-ai-reading-coach",
   "version": "1.0.0",
   "private": true,
+  "description": "A Christmas-themed bilingual reading coach with metallic ornaments",
+  "keywords": ["education", "reading", "bilingual", "christmas", "ai"],
+  "author": "Shirley's AI Reading Coach",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,32 +12,24 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@tailwindcss/typography": "0.5.10",
-    "lucide-react": "0.344.0",
-    "next": "14.0.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "@google/generative-ai": "^0.24.1",
+    "@tailwindcss/typography": "^0.5.16",
+    "lucide-react": "^0.543.0",
+    "next": "^16.0.1",
+    "openai": "^4.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@svgr/webpack": "8.1.0",
-    "@types/node": "20.11.5",
-    "@types/react": "18.2.48",
-    "@types/react-dom": "18.2.18",
-    "autoprefixer": "10.4.16",
+    "@types/node": "^20.11.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.21",
     "eslint": "8.56.0",
-    "eslint-config-next": "14.0.4",
-    "postcss": "8.4.32",
-    "tailwindcss": "3.3.6",
-    "typescript": "5.3.3"
-  },
-  "description": "A Christmas-themed bilingual reading coach with metallic ornaments",
-  "keywords": ["education", "reading", "bilingual", "christmas", "ai"],
-  "author": "Shirley's AI Reading Coach"
-{
-  "dependencies": {
-    "@google/generative-ai": "^0.17.0",
-    "openai": "^4.0.0"
+    "eslint-config-next": "^16.0.1",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3"
   }
-}
-
 }
