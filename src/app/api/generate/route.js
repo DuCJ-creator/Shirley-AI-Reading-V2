@@ -58,8 +58,13 @@ Requirements:
    Each line format:
    questionEn|questionZh(Traditional Chinese)|optionA,optionB,optionC,optionD|correctAnswer(A/B/C/D)
 
-IMPORTANT formatting:
-Reply in EXACTLY this structure, no extra text:
+IMPORTANT:
+- You MUST include ALL sections: TITLE_EN, TITLE_ZH, ARTICLE_EN, ARTICLE_ZH, VOCABULARY, QUESTIONS.
+- If any section is missing, your answer is invalid.
+- Do NOT use markdown headings (#, ##). Use plain text labels exactly as shown.
+- Do NOT add extra commentary before or after.
+
+Reply in EXACTLY this structure:
 
 TITLE_EN: <English title>
 TITLE_ZH: <Traditional Chinese title>
@@ -74,6 +79,12 @@ VOCABULARY:
 1. word|pos.|meaningZh(Traditional Chinese)|exampleEn|exampleZh(Traditional Chinese)
 2. ...
 (Exactly ${levelSpec.vocabN} items)
+
+QUESTIONS:
+1. questionEn|questionZh(Traditional Chinese)|A,B,C,D|X
+2. ...
+(Exactly ${levelSpec.qN} items)
+
 
 QUESTIONS:
 1. questionEn|questionZh(Traditional Chinese)|A,B,C,D|X
@@ -253,6 +264,16 @@ export async function POST(req) {
     return NextResponse.json(
       { error: err.message || "Generate failed" },
       { status: 500 }
+    );
+  }
+
+  const hasArticle = articleEn.length > 50;        // 至少要有一些長度
+  const hasVocab = vocabulary.length >= 5;
+  const hasQuiz = quiz.length >= 5;
+
+  if (!hasArticle || !hasVocab || !hasQuiz) {
+    throw new Error(
+      `AI response incomplete. hasArticle=${hasArticle} hasVocab=${hasVocab} hasQuiz=${hasQuiz}`
     );
   }
 }
