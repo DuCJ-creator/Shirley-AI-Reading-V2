@@ -19,6 +19,9 @@ export default function Home() {
   const [generatedData, setGeneratedData] = useState(null);
   const [studentInfo, setStudentInfo] = useState({ name: '', className: '', seatNo: '' });
   const [quizResults, setQuizResults] = useState({ answers: {}, score: 0 });
+  const [isZh, setIsZh] = useState(false);
+  const toggleLang = () => setIsZh(v => !v);
+
 
   const treeLayout = getTreeLayout(THEMES);
   const isLoading = stage === 'loading';
@@ -122,6 +125,8 @@ export default function Home() {
     setStudentInfo({ name: '', className: '', seatNo: '' });
     setQuizResults({ answers: {}, score: 0 });
     window.scrollTo(0, 0);
+    setIsZh(false);
+
   };
 
   // ✅ 小工具：顯示 provider / reason / version
@@ -319,16 +324,15 @@ export default function Home() {
             {/* ✅ 高級重新生成按鈕 */}
             <RegenerateButton />
 
-            <ReadingArticle
-              data={generatedData}
-              onFinish={() => {
-                if (generatedData.quiz?.length) {
-                  setStage('quiz');
-                } else {
-                  alert("目前尚無測驗題目（AI 可能只回傳文章）。");
-                }
-              }}
-            />
+          <ReadingArticle
+  data={generatedData}
+  isZh={isZh}
+  onToggleLang={toggleLang}
+  onFinish={() => {
+    if (generatedData.quiz?.length) setStage('quiz');
+    else alert("目前尚無測驗題目");
+  }}
+/>
 
             <VocabSection vocab={generatedData.vocabulary || []} />
 
@@ -349,7 +353,12 @@ export default function Home() {
         {stage === 'quiz' && generatedData && (
           <div className="py-12 w-full px-4">
             <MetaBadge meta={generatedData.meta} />
-            <QuizSection questions={generatedData.quiz || []} onComplete={handleQuizComplete} />
+           <QuizSection
+  data={generatedData}
+  isZh={isZh}
+  onToggleLang={toggleLang}
+  onComplete={handleQuizComplete}
+/>
           </div>
         )}
 
