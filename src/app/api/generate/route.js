@@ -1,19 +1,22 @@
 // src/app/api/generate/route.js
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs"; // ✅ 確保跑 Node（可用 env / SDK）
+export const runtime = "nodejs";
 
-const BUILD_VERSION = "route-2025-12-08-v5-fixed";
+const BUILD_VERSION = "route-2025-12-08-v6";
 
-// ---- fallback mock（你可自行換回你原本的 mock）----
-function generateMockContent(themeEn, themeZh, level, reason = "unknown") {
+function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
   return {
     article: {
       titleEn: themeEn,
       titleZh: themeZh,
-      paragraphs: [
+      paragraphsEn: [
         `This is a mock article about ${themeEn}.`,
         `Because no API key is available or the AI response failed.`
+      ],
+      paragraphsZh: [
+        `這是一篇關於「${themeZh}」的模擬文章。`,
+        `因為目前沒有可用的 AI Key 或生成失敗。`
       ]
     },
     vocabulary: [
@@ -27,22 +30,19 @@ function generateMockContent(themeEn, themeZh, level, reason = "unknown") {
     ],
     quiz: [
       {
-        question: "What is this passage about?",
-        options: [
-          "It is a mock passage.",
-          "It is about animals.",
-          "It is about sports.",
-          "It is about history."
-        ],
+        questionEn: "What is this passage about?",
+        questionZh: "這篇文章主要在談什麼？",
+        optionsEn: ["A mock answer A.", "A mock answer B.", "A mock answer C.", "A mock answer D."],
+        optionsZh: ["模擬選項A", "模擬選項B", "模擬選項C", "模擬選項D"],
         answer: "A",
-        explanationZh: "因為 AI 生成失敗，所以顯示備援內容。"
+        explanationZh: "這是模擬題目的解釋。"
       }
     ],
     meta: { provider: "mock", reason, level, version: BUILD_VERSION }
   };
 }
 
-// ---- 讓模型固定吐 JSON（避免你沒有 parseAIResponse）----
+// ✅ 你要的 schema：全英/全中兩套 + 答案 A/B/C/D
 function buildPrompt(themeEn, themeZh, level) {
   const spec =
     level === "Easy"
@@ -94,11 +94,12 @@ JSON schema (ALL fields required):
 
 Important:
 - paragraphsEn must be English only. paragraphsZh must be Traditional Chinese only.
-- quiz must include BOTH English and Chinese versions (questionEn/Zh, optionsEn/Zh).
+- quiz must include BOTH English and Chinese versions.
 - answer MUST be a single letter: A, B, C, or D.
 - options must be full sentences.
 `;
 }
+
 // ---- 防呆 JSON 解析：抓出最像 JSON 的區塊 ----
 function safeJsonParse(text) {
   try {
@@ -117,9 +118,6 @@ function safeJsonParse(text) {
 export async function POST(req) {
   const { themeId, level, themeEn, themeZh } = await req.json();
 
-  // ✅ A) request log：確認有 hit 到 API
-  console.log("[/api/generate] request:", { themeId, level, themeEn, themeZh });
-
   const finalThemeEn = themeEn || "Topic";
   const finalThemeZh = themeZh || "主題";
   const finalLevel = level || "Easy";
@@ -128,9 +126,7 @@ export async function POST(req) {
   const googleKey = process.env.GOOGLE_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  // ✅ B) 沒 key 就 warn + 回 mock
   if (!googleKey && !openaiKey) {
-    console.warn("[/api/generate] no API key, fallback to mock");
     return NextResponse.json(
       generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "no_key"),
       { status: 200 }
@@ -141,23 +137,14 @@ export async function POST(req) {
     let rawText = "";
     let provider = "";
 
-    // ✅ Gemini 優先
     if (googleKey) {
       provider = "gemini";
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(googleKey);
-
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        // ✅ JSON mode：大幅降低亂吐字/markdown機率
-        generationConfig: { responseMimeType: "application/json" }
-      });
-
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(prompt);
       rawText = result.response.text();
-    }
-    // ✅ OpenAI 備用
-    else {
+    } else {
       provider = "openai";
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: openaiKey });
@@ -174,58 +161,46 @@ export async function POST(req) {
       rawText = completion.choices?.[0]?.message?.content || "";
     }
 
-    console.log("[/api/generate] provider:", provider);
-    console.log("[/api/generate] rawText preview:", rawText.slice(0, 200));
-
     const parsed = safeJsonParse(rawText);
 
-    // ✅ C) 放寬回退條件：只要文章段落有就先用 AI
-    // (quiz/vocab 空就讓前端吃空陣列，不整包打回 mock)
-    if (!parsed || !parsed.article?.paragraphs?.length) {
-      console.warn("[/api/generate] bad AI output, fallback to mock");
-      console.warn("[/api/generate] rawText:", rawText);
-      const p = parsed.article?.paragraphs;
-if (typeof p === "string") {
-  parsed.article.paragraphs = p.split(/\n\s*\n/).filter(Boolean);
-} else if (!Array.isArray(p)) {
-  parsed.article.paragraphs = [];
-}
-
-// （可選）避免 paragraphsZh 不是陣列導致元件炸
-if (!Array.isArray(parsed.article.paragraphsZh)) {
-  parsed.article.paragraphsZh = [];
-}
-
-// 保險：缺的欄位補空陣列
-parsed.vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
-parsed.quiz = Array.isArray(parsed.quiz) ? parsed.quiz : [];
-
-parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
-return NextResponse.json(parsed, { status: 200 });
+    // 基本結構檢查
+    if (!parsed?.article || !parsed?.vocabulary || !parsed?.quiz) {
+      console.warn("[/api/generate] bad AI output, fallback. rawText:", rawText);
       return NextResponse.json(
         generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "bad_output"),
         { status: 200 }
       );
     }
 
-    // 保險：缺的欄位補空陣列
-    parsed.vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
-    parsed.quiz = Array.isArray(parsed.quiz) ? parsed.quiz : [];
+    // ✅ paragraphsEn / paragraphsZh 強制 array
+    const toArray = (x) =>
+      Array.isArray(x) ? x :
+      typeof x === "string" ? x.split(/\n\s*\n/).filter(Boolean) :
+      [];
+
+    parsed.article.paragraphsEn = toArray(parsed.article.paragraphsEn ?? parsed.article.paragraphs);
+    parsed.article.paragraphsZh = toArray(parsed.article.paragraphsZh);
+
+    // ✅ 強制 quiz.answer = A/B/C/D（放 try 裡、return 前）
+    if (Array.isArray(parsed.quiz)) {
+      parsed.quiz = parsed.quiz.map(q => {
+        let ans = String(q.answer || "A").trim().toUpperCase();
+        if (!["A", "B", "C", "D"].includes(ans)) ans = "A";
+
+        // 若 optionsEn/optionsZh 缺，補空陣列避免前端炸
+        q.optionsEn = Array.isArray(q.optionsEn) ? q.optionsEn : (Array.isArray(q.options) ? q.options : []);
+        q.optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
+
+        return { ...q, answer: ans };
+      });
+    }
 
     parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
+
     return NextResponse.json(parsed, { status: 200 });
-  } catch (err) 
-    // ✅ 強制 quiz.answer = A/B/C/D
-if (Array.isArray(parsed.quiz)) {
-  parsed.quiz = parsed.quiz.map(q => {
-    let ans = String(q.answer || "A").trim().toUpperCase();
-    if (!["A","B","C","D"].includes(ans)) ans = "A";
-    return { ...q, answer: ans };
-  });
-}
-  {
-    // ✅ D) catch error log：抓 import/SDK/key/網路等所有錯
-    console.error("[/api/generate] AI error:", err);
+
+  } catch (err) {
+    console.error("[/api/generate] exception:", err);
     return NextResponse.json(
       generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "exception"),
       { status: 200 }
