@@ -50,6 +50,7 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
             Knowledge Check
           </h3>
 
+          {/* ✅ 同步語言切換 */}
           <button
             onClick={onToggleLang}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase border border-white/10 bg-slate-900/60 hover:bg-slate-800/60 transition"
@@ -59,6 +60,7 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
             {isZh ? "English" : "繁體中文"}
           </button>
         </div>
+
         <p className="text-slate-400 uppercase tracking-[0.2em] text-sm">
           {isZh ? "閱讀測驗（繁中）" : "Reading Quiz (EN)"}
         </p>
@@ -67,11 +69,15 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
       <div className="space-y-6">
         {questions.map((q, idx) => {
           const qText = isZh ? q.questionZh : q.questionEn;
-          const options = isZh && q.optionsZh?.length ? q.optionsZh : q.optionsEn;
+          const options = (isZh && q.optionsZh?.length)
+            ? q.optionsZh
+            : q.optionsEn;
+
           const correctIdx = correctIdxList[idx];
 
           return (
-            <div key={idx}
+            <div
+              key={idx}
               className={`p-8 rounded-2xl border transition-all duration-500 ${
                 submitted
                   ? (answers[idx] === correctIdx
@@ -119,6 +125,7 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                 })}
               </div>
 
+              {/* ✅ 中文模式才顯示繁中解釋 */}
               {submitted && isZh && q.explanationZh && (
                 <div className="mt-4 text-slate-300/80 text-sm leading-relaxed">
                   {q.explanationZh}
