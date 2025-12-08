@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Star, User, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Sparkles, User, ArrowLeft } from 'lucide-react';
 import { THEMES } from '@/utils/constants';
 import { getTreeLayout, generateContent } from '@/utils/mockService';
 import { ChristmasTree, Snowfall, TreeStar } from '@/components/ChristmasElements';
@@ -28,25 +28,34 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
- const handleLevelSelect = async (level) => {
-  setSelectedLevel(level);
-  setStage('loading');
+  const handleLevelSelect = async (level) => {
+    setSelectedLevel(level);
+    setStage('loading');
 
-  try {
-    const data = await generateContent(selectedTheme.id, level);
-    setGeneratedData(data);
-    setStage('reading');
-  } catch (err) {
-    console.error(err);
-    alert("AI 生成失敗，請稍後再試 / Generation failed, please retry.");
-    setStage('level');
-    setGeneratedData(null);
-    setSelectedLevel(null);
-  }
+    const themeId = selectedTheme?.id; // ✅ 避免 state race
+    if (!themeId) {
+      console.error("[page] selectedTheme missing");
+      alert("請先選擇主題 / Please select a topic first.");
+      setStage('home');
+      return;
+    }
 
-  window.scrollTo(0, 0);
-};
+    try {
+      const data = await generateContent(themeId, level);
+      console.log("[page] generateContent result meta:", data?.meta);
 
+      setGeneratedData(data);
+      setStage('reading');
+    } catch (err) {
+      console.error("[page] generateContent error:", err);
+      alert("AI 生成失敗，請稍後再試 / Generation failed, please retry.");
+      setStage('level');
+      setGeneratedData(null);
+      setSelectedLevel(null);
+    }
+
+    window.scrollTo(0, 0);
+  };
 
   const handleBackToLevel = () => {
     setStage('level');
@@ -87,11 +96,35 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
+  // ✅ 小工具：顯示 provider / reason / version
+  const MetaBadge = ({ meta }) => {
+    if (!meta) return null;
+    const provider = meta.provider || "unknown";
+    const reason = meta.reason ? ` • ${meta.reason}` : "";
+    const version = meta.version ? ` • ${meta.version}` : "";
+    const isMock = provider === "mock";
+
+    return (
+      <div className="mb-6 flex justify-center">
+        <div
+          className={`text-xs font-bold tracking-widest uppercase px-4 py-2 rounded-full border backdrop-blur
+            ${isMock
+              ? "bg-rose-900/40 border-rose-400/30 text-rose-200"
+              : "bg-emerald-900/40 border-emerald-400/30 text-emerald-200"
+            }`}
+          title="content provider"
+        >
+          provider: {provider}{reason}{version}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen text-slate-100 font-sans selection:bg-yellow-500/50 selection:text-white pb-20 overflow-x-hidden relative flex flex-col">
       <ChristmasTree />
       <Snowfall />
-      
+
       <header className="py-14 px-4 text-center relative no-print z-10">
         <h1 className="text-5xl md:text-7xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-yellow-300 to-yellow-600 animate-float mb-4 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] tracking-tight">
           Shirley's AI Reading Coach
@@ -99,18 +132,18 @@ export default function Home() {
         <p className="text-indigo-200/80 text-lg md:text-xl tracking-[0.3em] uppercase font-bold drop-shadow-md">
           <span className="text-yellow-400">★</span> Explore • Learn • Grow • 全球素養閱讀 <span className="text-yellow-400">★</span>
         </p>
-        
+
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-[1px] bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
       </header>
 
       <main className="container mx-auto px-4 relative z-10 flex-grow flex flex-col items-center justify-center">
-        
+
         {stage === 'home' && (
           <div className="py-8 animate-fadeIn flex flex-col items-center w-full">
             <div className="text-center mb-16 text-yellow-100/90 font-light tracking-wide text-lg max-w-2xl bg-white/5 backdrop-blur-md px-8 py-4 rounded-full border border-white/10 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
-              <p>點擊一顆<span className="text-yellow-400 font-bold mx-1">金屬質感彩球</span>，開啟您的雙語閱讀之旅。<br/><span className="text-sm opacity-70">Click a metallic ornament to begin your bilingual reading journey.</span></p>
+              <p>點擊一顆<span className="text-yellow-400 font-bold mx-1">金屬質感彩球</span>，開啟您的雙語閱讀之旅。<br /><span className="text-sm opacity-70">Click a metallic ornament to begin your bilingual reading journey.</span></p>
             </div>
-            
+
             <div className="flex flex-col items-center gap-1 relative mt-4">
               <TreeStar />
 
@@ -135,7 +168,7 @@ export default function Home() {
         {stage === 'level' && selectedTheme && (
           <div className="flex flex-col items-center justify-center w-full my-10">
             <div className="mb-16 scale-[2.2] transform-gpu filter drop-shadow-[0_0_60px_rgba(255,255,255,0.2)] animate-float">
-              <LightBulb theme={selectedTheme} onClick={()=>{}} isSelected={true} isLarge={true} />
+              <LightBulb theme={selectedTheme} onClick={() => { }} isSelected={true} isLarge={true} />
             </div>
             <LevelSelector onSelect={handleLevelSelect} selectedTheme={selectedTheme} onBack={handleBackToHome} />
           </div>
@@ -147,7 +180,7 @@ export default function Home() {
               <div className="absolute inset-0 border-2 border-slate-500/20 rounded-full animate-[spin_3s_linear_infinite]"></div>
               <div className="absolute inset-2 border-2 border-t-yellow-400 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-[spin_1.5s_linear_infinite] shadow-[0_0_15px_rgba(250,204,21,0.5)]"></div>
               <div className="absolute inset-6 border-2 border-r-red-500 border-t-transparent border-b-transparent border-l-transparent rounded-full animate-[spin_2s_linear_reverse_infinite] shadow-[0_0_15px_rgba(236,72,153,0.5)]"></div>
-              
+
               <div className="absolute inset-0 flex items-center justify-center">
                 <Sparkles className="text-white animate-pulse" size={48} />
               </div>
@@ -163,8 +196,30 @@ export default function Home() {
 
         {stage === 'reading' && generatedData && (
           <div className="py-12 w-full px-4">
-            <ReadingArticle data={generatedData} onFinish={() => setStage('quiz')} />
-            <VocabSection vocab={generatedData.vocabulary} />
+            {/* ✅ provider/reason badge */}
+            <MetaBadge meta={generatedData.meta} />
+
+            {/* ✅ 只有題目存在才允許進 quiz */}
+            <ReadingArticle
+              data={generatedData}
+              onFinish={() => {
+                if (generatedData.quiz?.length) {
+                  setStage('quiz');
+                } else {
+                  alert("目前尚無測驗題目（AI 可能只回傳文章）。");
+                }
+              }}
+            />
+
+            <VocabSection vocab={generatedData.vocabulary || []} />
+
+            {/* ✅ 題目為空提示 */}
+            {!generatedData.quiz?.length && (
+              <div className="mt-10 text-center text-amber-200/80 text-sm">
+                目前沒有測驗題目（quiz 為空），你可以先閱讀文章或重新生成一次。
+              </div>
+            )}
+
             <div className="text-center mt-20">
               <span className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase border border-white/10 px-6 py-3 rounded-full bg-slate-900/50 backdrop-blur">
                 Step 1: Read & Learn • Step 2: Quiz & Review
@@ -175,7 +230,8 @@ export default function Home() {
 
         {stage === 'quiz' && generatedData && (
           <div className="py-12 w-full px-4">
-            <QuizSection questions={generatedData.quiz} onComplete={handleQuizComplete} />
+            <MetaBadge meta={generatedData.meta} />
+            <QuizSection questions={generatedData.quiz || []} onComplete={handleQuizComplete} />
           </div>
         )}
 
@@ -199,7 +255,7 @@ export default function Home() {
                     placeholder="e.g., 901"
                     className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
                     value={studentInfo.className}
-                    onChange={e => setStudentInfo({...studentInfo, className: e.target.value})}
+                    onChange={e => setStudentInfo({ ...studentInfo, className: e.target.value })}
                   />
                 </div>
                 <div className="group/input">
@@ -210,7 +266,7 @@ export default function Home() {
                     placeholder="e.g., 15"
                     className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
                     value={studentInfo.seatNo}
-                    onChange={e => setStudentInfo({...studentInfo, seatNo: e.target.value})}
+                    onChange={e => setStudentInfo({ ...studentInfo, seatNo: e.target.value })}
                   />
                 </div>
                 <div className="group/input">
@@ -221,7 +277,7 @@ export default function Home() {
                     placeholder="Your Full Name"
                     className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
                     value={studentInfo.name}
-                    onChange={e => setStudentInfo({...studentInfo, name: e.target.value})}
+                    onChange={e => setStudentInfo({ ...studentInfo, name: e.target.value })}
                   />
                 </div>
               </div>
@@ -251,7 +307,7 @@ export default function Home() {
           <p className="mb-2"><strong className="text-yellow-500/80">Disclaimer:</strong> Kindly note that the reading materials are thoughtfully crafted by AI—and while every effort is made for accuracy, occasional slips may still occur.</p>
           <p><strong className="text-yellow-500/80">敬請留意：</strong> 本閱讀材料由人工智慧精心生成，雖力求準確，偶有疏漏仍在所難免。</p>
         </div>
-        
+
         <p className="font-medium tracking-widest uppercase mb-2">Designed for Global Education</p>
         <p className="opacity-50">&copy; 2025 Shirley's AI Reading Coach</p>
       </footer>
