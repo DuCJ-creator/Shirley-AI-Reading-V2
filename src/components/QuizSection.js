@@ -1,10 +1,11 @@
+// src/components/QuizSection.js
 'use client';
 
 import React, { useState, useMemo } from 'react';
 import { Lightbulb, CheckCircle, Award, Languages } from 'lucide-react';
 
 const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
-  const questions = data?.quiz || [];
+  const questions = Array.isArray(data?.quiz) ? data.quiz : [];
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -13,10 +14,10 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
     setAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
   };
 
-  // ✅ ABCD -> correct option index
+  // ✅ ABCD -> correct option index（前端以 index 判定）
   const correctIndexOf = (q) => {
-    const ans = String(q.answer || "A").toUpperCase();
-    const map = { A:0, B:1, C:2, D:3 };
+    const ans = String(q.answer || "A").toUpperCase().trim();
+    const map = { A: 0, B: 1, C: 2, D: 3 };
     return map[ans] ?? 0;
   };
 
@@ -45,9 +46,31 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
   const hasLeadingLabel = (text) =>
     /^[\s]*[ABCD][\.\)\:：]\s+/i.test(String(text || ""));
 
-  // ✅ 移除開頭 ABCD 標號
-  const stripLeadingLabel = (text) =>
-    String(text || "").replace(/^[\s]*[ABCD][\.\)\:：]\s+/i, '');
+  // ✅ 連續剝掉所有重複標號（處理像 "A. A. xxx"）
+  const stripLeadingLabels = (text) => {
+    let t = String(text || "");
+    while (hasLeadingLabel(t)) {
+      t = t.replace(/^[\s]*[ABCD][\.\)\:：]\s+/i, '');
+    }
+    return t;
+  };
+
+  // ✅ 同時兼容 optionsEn/options 舊欄位
+  const getOptionsEn = (q) =>
+    Array.isArray(q.optionsEn)
+      ? q.optionsEn
+      : Array.isArray(q.options)
+      ? q.options
+      : [];
+
+  const getOptionsZh = (q) =>
+    Array.isArray(q.optionsZh) ? q.optionsZh : [];
+
+  const getQuestionEn = (q) =>
+    q.questionEn || q.question || q.q || "";
+
+  const getQuestionZh = (q) =>
+    q.questionZh || q.question_zh || "";
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-10 bg-slate-900/60 p-10 md:p-14 rounded-3xl backdrop-blur-xl border border-white/10 animate-fadeIn relative shadow-2xl">
@@ -58,6 +81,7 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
             Knowledge Check
           </h3>
 
+          {/* ✅ 語言切換（全英 / 全繁中） */}
           <button
             onClick={onToggleLang}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase border border-white/10 bg-slate-900/60 hover:bg-slate-800/60 transition"
@@ -75,10 +99,12 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
 
       <div className="space-y-6">
         {questions.map((q, idx) => {
-          const qText = isZh ? q.questionZh : q.questionEn;
-          const options = (isZh && q.optionsZh?.length)
-            ? q.optionsZh
-            : q.optionsEn;
+          const qText = isZh ? getQuestionZh(q) : getQuestionEn(q);
+
+          // ✅ 中文模式：若 optionsZh 沒回，就 fallback 英文
+          const options = (isZh && getOptionsZh(q).length)
+            ? getOptionsZh(q)
+            : getOptionsEn(q);
 
           const correctIdx = correctIdxList[idx];
 
@@ -95,19 +121,19 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
             >
               <p className="text-xl text-slate-200 mb-6 font-medium">
                 <span className="text-yellow-500 font-bold mr-3 text-2xl opacity-80">
-                  0{idx + 1}
+                  {String(idx + 1).padStart(2, "0")}
                 </span>
-                {qText}
+                {qText || "(No question text)"}
               </p>
 
               <div className="grid gap-3">
-                {options.map((opt, optIdx) => {
+                {(options || []).map((opt, optIdx) => {
                   const isSelected = answers[idx] === optIdx;
                   const isCorrect = submitted && optIdx === correctIdx;
                   const isWrongSelected = submitted && isSelected && optIdx !== correctIdx;
 
                   const labeled = hasLeadingLabel(opt);
-                  const cleanOpt = stripLeadingLabel(opt);
+                  const cleanOpt = stripLeadingLabels(opt);
 
                   return (
                     <button
@@ -122,7 +148,7 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                       `}
                     >
                       <span className="relative z-10">
-                        {/* ✅ 只有在 option 沒自帶標號時，才補 A/B/C/D */}
+                        {/* ✅ 若 option 已自帶 A/B/C/D 就不再重複顯示 */}
                         {!labeled && (
                           <span className="mr-2 font-bold">
                             {String.fromCharCode(65 + optIdx)}.
@@ -131,13 +157,23 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                         {cleanOpt}
                       </span>
 
-                      {isCorrect && <CheckCircle size={24} className="text-green-400"/>}
-                      {isWrongSelected && <div className="text-red-400 font-bold text-2xl">✗</div>}
+                      {isCorrect && (
+                        <CheckCircle
+                          size={24}
+                          className="text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                        />
+                      )}
+                      {isWrongSelected && (
+                        <div className="text-red-400 font-bold text-2xl drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]">
+                          ✗
+                        </div>
+                      )}
                     </button>
                   );
                 })}
               </div>
 
+              {/* ✅ 中文模式才顯示繁中解釋 */}
               {submitted && isZh && q.explanationZh && (
                 <div className="mt-4 text-slate-300/80 text-sm leading-relaxed">
                   {q.explanationZh}
@@ -156,9 +192,10 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
           Submit Answers
         </button>
       ) : (
-        <div className="mt-12 text-center bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-3xl border border-yellow-500/30">
+        <div className="mt-12 text-center animate-bounceIn bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50"></div>
           <p className="text-slate-400 uppercase tracking-widest text-sm mb-4">Final Result</p>
-          <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-8 font-serif">
+          <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-8 drop-shadow-sm font-serif">
             {calculateScore()} <span className="text-4xl text-slate-600">/ {questions.length}</span>
           </div>
           <button
