@@ -11,40 +11,48 @@ const Portfolio = ({
   onReset,
   onSameTopic,
 }) => {
-  const article = data?.article || {};
-  const quiz = Array.isArray(data?.quiz) ? data.quiz : [];
-  const vocab = Array.isArray(data?.vocabulary) ? data.vocabulary : [];
+  // ✅ 最強防呆：沒 data 就顯示提示，不要白屏
+  if (!data) {
+    return (
+      <div className="text-center text-slate-300 py-20">
+        No portfolio data found.
+      </div>
+    );
+  }
 
-  // ✅ 兼容舊欄位（避免 undefined）
+  const article = data.article || {};
+  const quiz = Array.isArray(data.quiz) ? data.quiz : [];
+  const vocab = Array.isArray(data.vocabulary) ? data.vocabulary : [];
+
   const titleEn =
-    article.titleEn || article.title || data?.titleEn || data?.title || "Topic";
+    article.titleEn || article.title || data.titleEn || data.title || "Topic";
   const titleZh =
-    article.titleZh || article.title_zh || data?.titleZh || data?.title_zh || "";
+    article.titleZh || article.title_zh || data.titleZh || data.title_zh || "";
 
   const paragraphsEn =
     article.paragraphsEn ||
     article.paragraphs ||
-    data?.content?.split(/\n\s*\n/).filter(Boolean) ||
+    (typeof data.content === "string"
+      ? data.content.split(/\n\s*\n/).filter(Boolean)
+      : []) ||
     [];
 
   const paragraphsZh =
     article.paragraphsZh ||
     [];
 
-  const level = data?.meta?.level || data?.level || "Easy";
-  const provider = data?.meta?.provider || "unknown";
-  const version = data?.meta?.version || "";
+  const level = data.meta?.level || data.level || "Easy";
+  const provider = data.meta?.provider || "unknown";
+  const version = data.meta?.version || "";
 
   const abc = ["A", "B", "C", "D"];
 
-  // ✅ quiz 正解 index（ABCD -> 0..3）
   const correctIndexOf = (q) => {
     const ans = String(q.answer || "A").trim().toUpperCase();
     const map = { A: 0, B: 1, C: 2, D: 3 };
     return map[ans] ?? 0;
   };
 
-  // ✅ 取 option array（兼容新舊）
   const getOptionsEn = (q) =>
     Array.isArray(q.optionsEn)
       ? q.optionsEn
@@ -52,48 +60,39 @@ const Portfolio = ({
       ? q.options
       : [];
 
-  // ✅ 取 question（兼容新舊）
   const getQuestionEn = (q) =>
     q.questionEn || q.question || q.q || "";
 
   const reportRows = useMemo(() => {
     return quiz.map((q, idx) => {
-      const opts = getOptionsEn(q);
+      const optsRaw = getOptionsEn(q);
+      const opts = Array.isArray(optsRaw) ? optsRaw : [];
+
       const correctIdx = correctIndexOf(q);
       const userIdx = answers?.[idx];
 
       const correctLetter = abc[correctIdx] || "A";
       const userLetter =
-        typeof userIdx === "number" ? abc[userIdx] : "-";
-
-      const correctText = opts?.[correctIdx] || "";
-      const userText =
-        typeof userIdx === "number" ? (opts?.[userIdx] || "") : "";
-
-      const isCorrect = typeof userIdx === "number" && userIdx === correctIdx;
+        typeof userIdx === "number" ? (abc[userIdx] || "-") : "-";
 
       return {
         idx,
-        question: getQuestionEn(q),
+        question: getQuestionEn(q) || "(No question text)",
         opts,
         correctIdx,
-        userIdx,
+        userIdx: typeof userIdx === "number" ? userIdx : null,
         correctLetter,
         userLetter,
-        correctText,
-        userText,
-        isCorrect,
+        isCorrect:
+          typeof userIdx === "number" && userIdx === correctIdx,
       };
     });
   }, [quiz, answers]);
 
   return (
     <div className="w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
-      {/* ===== Header ===== */}
+      {/* Header */}
       <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-80 h-80 bg-yellow-500/10 blur-[100px] rounded-full" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full" />
-
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
             <h1 className="text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
@@ -130,13 +129,13 @@ const Portfolio = ({
             </div>
             <div className="text-4xl font-black text-yellow-300">
               {quizScore}
-              <span className="text-slate-500 text-2xl"> / {quiz.length || 0}</span>
+              <span className="text-slate-500 text-2xl"> / {quiz.length}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ===== Article (EN) ===== */}
+      {/* Article EN */}
       <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Article (EN)
@@ -149,23 +148,9 @@ const Portfolio = ({
             <p className="text-slate-500">No English article content.</p>
           )}
         </div>
-
-        {/* Optional: ZH summary under fold */}
-        {paragraphsZh.length > 0 && (
-          <details className="mt-6">
-            <summary className="cursor-pointer text-yellow-300 text-sm font-bold tracking-widest uppercase">
-              展開繁中版本
-            </summary>
-            <div className="mt-4 space-y-3 text-slate-300 leading-relaxed">
-              {paragraphsZh.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
-          </details>
-        )}
       </div>
 
-      {/* ===== Vocabulary ===== */}
+      {/* Vocabulary */}
       <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Vocabulary
@@ -173,31 +158,20 @@ const Portfolio = ({
         <div className="grid md:grid-cols-2 gap-4">
           {vocab.map((v, i) => (
             <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5">
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-black text-white">
-                  {v.word}
-                  {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
-                </div>
+              <div className="text-lg font-black text-white">
+                {v.word}
+                {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
               </div>
-              {v.meaningZh && (
-                <div className="mt-1 text-slate-200">{v.meaningZh}</div>
-              )}
-              {v.exampleEn && (
-                <div className="mt-2 text-slate-300 text-sm">{v.exampleEn}</div>
-              )}
-              {v.exampleZh && (
-                <div className="mt-1 text-slate-400 text-sm">{v.exampleZh}</div>
-              )}
+              {v.meaningZh && <div className="mt-1 text-slate-200">{v.meaningZh}</div>}
+              {v.exampleEn && <div className="mt-2 text-slate-300 text-sm">{v.exampleEn}</div>}
+              {v.exampleZh && <div className="mt-1 text-slate-400 text-sm">{v.exampleZh}</div>}
             </div>
           ))}
-
-          {!vocab.length && (
-            <div className="text-slate-500">No vocabulary returned.</div>
-          )}
+          {!vocab.length && <div className="text-slate-500">No vocabulary returned.</div>}
         </div>
       </div>
 
-      {/* ===== Quiz Review ===== */}
+      {/* Quiz Review */}
       <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-6 tracking-widest uppercase">
           Quiz Review (EN)
@@ -218,7 +192,7 @@ const Portfolio = ({
                   <span className="text-yellow-400 font-black mr-2">
                     {String(r.idx + 1).padStart(2, "0")}
                   </span>
-                  {r.question || "(No question text)"}
+                  {r.question}
                 </div>
 
                 {r.isCorrect ? (
@@ -229,7 +203,7 @@ const Portfolio = ({
               </div>
 
               <div className="mt-4 space-y-2 text-slate-200">
-                {r.opts.map((opt, i) => {
+                {(r.opts || []).map((opt, i) => {
                   const isCorrectOpt = i === r.correctIdx;
                   const isUserOpt = i === r.userIdx;
 
@@ -255,13 +229,9 @@ const Portfolio = ({
 
               <div className="mt-4 text-sm text-slate-300">
                 Your Answer:{" "}
-                <span className="font-bold text-white">
-                  {r.userLetter}
-                </span>
+                <span className="font-bold text-white">{r.userLetter}</span>
                 {"  "}• Correct:{" "}
-                <span className="font-bold text-green-300">
-                  {r.correctLetter}
-                </span>
+                <span className="font-bold text-green-300">{r.correctLetter}</span>
               </div>
             </div>
           ))}
@@ -272,7 +242,7 @@ const Portfolio = ({
         </div>
       </div>
 
-      {/* ===== Actions ===== */}
+      {/* Actions */}
       <div className="mt-10 flex flex-col md:flex-row gap-4 justify-center no-print">
         <button
           onClick={onSameTopic}
