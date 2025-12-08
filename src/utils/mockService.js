@@ -62,14 +62,28 @@ function normalizeApiResponse(apiJson, themeId, level) {
     exampleZh: v.exampleZh || v.example_zh || v.zhExample || ""
   })).filter(v => v.word);
 
-  const quiz = (raw.quiz || raw.questions || []).map(q => ({
+const quiz = (raw.quiz || raw.questions || []).map(q => {
+  let optionsEn = q.optionsEn || q.options || q.choices || [];
+  let optionsZh = q.optionsZh || [];
+
+  if (typeof optionsEn === "string") optionsEn = [optionsEn];
+  if (!Array.isArray(optionsEn)) optionsEn = [];
+
+  if (typeof optionsZh === "string") optionsZh = [optionsZh];
+  if (!Array.isArray(optionsZh)) optionsZh = [];
+
+  let ans = String(q.answer || q.correctAnswer || "A").toUpperCase();
+  if (!["A","B","C","D"].includes(ans)) ans = "A";
+
+  return {
     questionEn: q.questionEn || q.question || q.q || "",
     questionZh: q.questionZh || q.question_zh || "",
-    optionsEn: q.optionsEn || q.options || q.choices || [],
-    optionsZh: q.optionsZh || [],
-    answer: String(q.answer || q.correctAnswer || "A").toUpperCase(),
+    optionsEn,
+    optionsZh,
+    answer: ans,
     explanationZh: q.explanationZh || q.explainZh || ""
-  })).filter(q => q.questionEn);
+  };
+}).filter(q => q.questionEn);
 
   return {
     article: {
