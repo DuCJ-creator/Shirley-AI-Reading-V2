@@ -1,91 +1,64 @@
-// src/components/ReadingArticle.js
 'use client';
 
 import React from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Volume2, Languages } from 'lucide-react';
+import { speak } from '@/utils/useSpeech';
 
-const ReadingArticle = ({ data, onFinish }) => {
-  // ✅ 兼容新舊格式
+const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
   const article = data?.article || {};
+  const level = data?.meta?.level || "Easy";
 
-  const level =
-    data?.meta?.level ||
-    data?.level ||
-    "Easy";
-
-  const titleEn =
-    article?.titleEn ||
-    data?.titleEn ||
-    data?.title ||
-    data?.themeEn ||
-    "Topic";
-
-  const titleZh =
-    article?.titleZh ||
-    data?.titleZh ||
-    data?.themeZh ||
-    "";
-
-  // ✅ 段落來源：新格式 paragraphs / 舊格式 content
-  let paragraphs = article?.paragraphs || data?.paragraphs || data?.content || [];
-  if (typeof paragraphs === "string") {
-    paragraphs = paragraphs.split(/\n\s*\n/).filter(Boolean);
-  }
-  if (!Array.isArray(paragraphs)) paragraphs = [];
-
-  // （可選）中文段落如果有就顯示
-  let paragraphsZh = article?.paragraphsZh || data?.paragraphsZh || [];
-  if (typeof paragraphsZh === "string") {
-    paragraphsZh = paragraphsZh.split(/\n\s*\n/).filter(Boolean);
-  }
-  if (!Array.isArray(paragraphsZh)) paragraphsZh = [];
+  const title = isZh ? (article.titleZh || "") : (article.titleEn || "");
+  const paragraphs = isZh ? (article.paragraphsZh || []) : (article.paragraphsEn || []);
 
   return (
     <div className="w-full max-w-5xl mx-auto bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 text-slate-100 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] p-10 md:p-14 animate-slideUp relative overflow-hidden">
-      {/* Elegant BG Glows */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[100px] -z-10" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-green-900/10 rounded-full blur-[80px] -z-10" />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-white/10 pb-8 mt-4 md:mt-0">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-white/10 pb-8 mt-4 md:mt-0 gap-4">
         <div className="max-w-2xl">
           <div className="text-yellow-400 text-sm font-bold tracking-widest uppercase mb-2">
-            Current Topic: {titleEn}
-            {titleZh ? `｜${titleZh}` : ""}
+            Current Topic: {article.titleEn}{article.titleZh ? `｜${article.titleZh}` : ""}
           </div>
-
-          <h2 className="text-3xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-4 leading-tight">
-            {titleEn}
-            {titleZh && (
-              <span className="block text-base md:text-xl font-semibold text-slate-300/80 mt-2">
-                {titleZh}
-              </span>
-            )}
+          <h2 className="text-3xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-2 leading-tight">
+            {title}
           </h2>
         </div>
 
-        <span
-          className="px-5 py-2 rounded-full text-xs font-bold tracking-[0.2em] uppercase shadow-inner border backdrop-blur-md bg-white/5 border-white/10 text-yellow-200"
-        >
-          {level} Reading
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="px-5 py-2 rounded-full text-xs font-bold tracking-[0.2em] uppercase shadow-inner border backdrop-blur-md bg-white/5 border-white/10 text-yellow-200">
+            {level} Reading
+          </span>
+
+          {/* ✅ 切換全英/全中 */}
+          <button
+            onClick={onToggleLang}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold tracking-widest uppercase border border-white/10 bg-slate-900/60 hover:bg-slate-800/60 transition"
+            title="Toggle language"
+          >
+            <Languages size={14}/>
+            {isZh ? "English" : "繁體中文"}
+          </button>
+        </div>
       </div>
 
-      {/* ✅ 段落逐段顯示（新格式） */}
+      {/* ✅ 段落 + 發音 */}
       <div className="prose prose-xl prose-invert max-w-none mb-14 leading-loose font-serif text-slate-300/90 tracking-wide space-y-6">
         {paragraphs.map((p, i) => (
-          <div key={i}>
-            <p>{p}</p>
-            {paragraphsZh[i] && (
-              <p className="text-slate-400/90 text-lg mt-2">{paragraphsZh[i]}</p>
+          <div key={i} className="relative">
+            {!isZh && (
+              <button
+                onClick={() => speak(p, "en-US")}
+                className="absolute -left-2 top-0 md:-left-10 md:top-1 text-yellow-300/80 hover:text-yellow-200 transition"
+                title="Pronounce paragraph"
+              >
+                <Volume2 size={18}/>
+              </button>
             )}
+            <p>{p}</p>
           </div>
         ))}
-
-        {!paragraphs.length && (
-          <p className="text-slate-400/80">
-            No article content returned.
-          </p>
-        )}
       </div>
 
       <div className="flex justify-center">
