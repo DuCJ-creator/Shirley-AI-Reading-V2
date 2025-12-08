@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs"; // ✅ 確保跑 Node（可用 env / SDK）
+export const runtime = "nodejs";
 
-const BUILD_VERSION = "route-2025-12-08-v7-shuffle";
+const BUILD_VERSION = "route-2025-12-08-v8-strip-shuffle";
 
 // ---- fallback mock ----
 function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
@@ -19,15 +19,7 @@ function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
         `因為目前沒有可用的 AI Key 或生成失敗。`
       ]
     },
-    vocabulary: [
-      {
-        word: "example",
-        pos: "n.",
-        meaningZh: "例子",
-        exampleEn: "This is an example sentence.",
-        exampleZh: "這是一個例句。"
-      }
-    ],
+    vocabulary: [],
     quiz: [
       {
         questionEn: "What is this passage about?",
@@ -104,14 +96,13 @@ JSON schema (ALL fields required):
 
 Important:
 - paragraphsEn must be English only. paragraphsZh must be Traditional Chinese only.
-- quiz must include BOTH English and Chinese versions.
 - answer MUST be a single letter: A, B, C, or D.
 - options must be full sentences.
 - The correct answer must NOT always be A. Vary the position of the correct option.
 `;
 }
 
-// ---- 防呆 JSON 解析：抓出最像 JSON 的區塊 ----
+// ---- 防呆 JSON 解析 ----
 function safeJsonParse(text) {
   try {
     return JSON.parse(text);
@@ -133,6 +124,14 @@ function toArray(x) {
     return x.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
   }
   return [];
+}
+
+// ✅ 工具：剝掉 options 開頭的 ABCD（連續剝）
+function stripLeadingLabels(text) {
+  let t = String(text || "").trim();
+  const re = /^[\s]*[ABCD][\.\)\:：]\s+/i;
+  while (re.test(t)) t = t.replace(re, "");
+  return t;
 }
 
 // ✅ 洗牌（英文/中文一起洗）並同步更新答案
@@ -184,7 +183,6 @@ export async function POST(req) {
     let rawText = "";
     let provider = "";
 
-    // ✅ Gemini 優先
     if (googleKey) {
       provider = "gemini";
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
@@ -192,9 +190,7 @@ export async function POST(req) {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(prompt);
       rawText = result.response.text();
-    }
-    // ✅ OpenAI 備用
-    else {
+    } else {
       provider = "openai";
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: openaiKey });
@@ -221,29 +217,28 @@ export async function POST(req) {
       );
     }
 
-    // ✅ 統一文章段落欄位
     parsed.article.paragraphsEn = toArray(
       parsed.article.paragraphsEn ?? parsed.article.paragraphs
     );
     parsed.article.paragraphsZh = toArray(parsed.article.paragraphsZh);
 
-    // ✅ Quiz 答案/選項對齊 + 洗牌 + 重算 ABCD
     if (Array.isArray(parsed.quiz)) {
       parsed.quiz = parsed.quiz.map(q => {
-        // 1) 先拿 options（兼容舊欄位）
         let optionsEn = Array.isArray(q.optionsEn)
           ? q.optionsEn
           : (Array.isArray(q.options) ? q.options : []);
 
         let optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
 
-        // 2) answer 強制成 ABCD（不合法先當 A）
+        // ✅ 先把 options 中的 A/B/C/D 前綴剝乾淨
+        optionsEn = optionsEn.map(stripLeadingLabels);
+        optionsZh = optionsZh.map(stripLeadingLabels);
+
         let ansRaw = q.answer ?? q.correctAnswer ?? "A";
-        ansRaw = String(ansRaw).trim();
-        let ansLetter = ansRaw.toUpperCase();
+        let ansLetter = String(ansRaw).trim().toUpperCase();
         if (!["A", "B", "C", "D"].includes(ansLetter)) ansLetter = "A";
 
-        // 3) ✅ 後端強制洗牌 + 重算答案
+        // ✅ 強制洗牌 + 重算答案
         const shuffled = shuffleWithAnswer(optionsEn, optionsZh, ansLetter);
 
         return {
