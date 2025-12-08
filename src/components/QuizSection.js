@@ -1,10 +1,10 @@
 // src/components/QuizSection.js
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Lightbulb, CheckCircle, Award } from 'lucide-react';
 
-const QuizSection = ({ questions, onComplete }) => {
+const QuizSection = ({ questions = [], onComplete }) => {
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -13,10 +13,38 @@ const QuizSection = ({ questions, onComplete }) => {
     setAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
   };
 
+  // ✅ 把各種 answer 型態統一成「正確選項索引」
+  const correctIndexOf = (q) => {
+    const opts = q.options || [];
+    const ansRaw = q.answer ?? q.correctAnswer;
+
+    if (ansRaw == null) return -1;
+
+    // 1) 如果 answer 是 number（0~3）
+    if (typeof ansRaw === "number") return ansRaw;
+
+    const ans = String(ansRaw).trim();
+
+    // 2) 如果 answer 是 A/B/C/D
+    if (/^[ABCD]$/i.test(ans)) {
+      return ans.toUpperCase().charCodeAt(0) - 65;
+    }
+
+    // 3) 否則當作「完整句子」→ 去 options 找完全相同
+    const idx = opts.findIndex(op => String(op).trim() === ans);
+    return idx >= 0 ? idx : -1;
+  };
+
+  // ✅ 預先算每題正確索引
+  const correctIdxList = useMemo(
+    () => questions.map(q => correctIndexOf(q)),
+    [questions]
+  );
+
   const calculateScore = () => {
     let score = 0;
     questions.forEach((q, idx) => {
-      if (answers[idx] === q.answer) score++;
+      if (answers[idx] === correctIdxList[idx]) score++;
     });
     return score;
   };
@@ -37,34 +65,82 @@ const QuizSection = ({ questions, onComplete }) => {
         </h3>
         <p className="text-slate-400 uppercase tracking-[0.2em] text-sm">閱讀測驗</p>
       </div>
-      
+
       <div className="space-y-6">
-        {questions.map((q, idx) => (
-          <div key={idx} className={`p-8 rounded-2xl border transition-all duration-500 ${submitted ? (answers[idx] === q.answer ? 'border-green-500/30 bg-green-900/10' : 'border-red-500/30 bg-red-900/10') : 'border-white/5 bg-slate-800/40 hover:bg-slate-800/60'}`}>
-            <p className="text-xl text-slate-200 mb-6 font-medium"><span className="text-yellow-500 font-bold mr-3 text-2xl opacity-80">0{idx + 1}</span> {q.q}</p>
-            <div className="grid gap-3">
-              {q.options.map((opt, optIdx) => (
-                <button
-                  key={optIdx}
-                  onClick={() => handleSelect(idx, optIdx)}
-                  disabled={submitted}
-                  className={`w-full text-left p-4 rounded-xl transition-all duration-300 flex items-center justify-between font-medium border relative overflow-hidden group
-                    ${answers[idx] === optIdx
-                      ? 'bg-gradient-to-r from-yellow-600 to-yellow-800 text-white border-yellow-500/50 shadow-lg'
-                      : 'bg-white/5 text-slate-400 border-transparent hover:bg-white/10 hover:text-slate-200'}
-                    ${submitted ? 'cursor-default' : ''}
-                  `}
-                >
-                  <span className="relative z-10">{opt}</span>
-                  {answers[idx] === optIdx && !submitted && <div className="absolute inset-0 bg-gradient-to-r from-yellow-600 to-yellow-800 -z-0" />}
-                  
-                  {submitted && q.answer === optIdx && <CheckCircle size={24} className="text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]"/>}
-                  {submitted && answers[idx] === optIdx && answers[idx] !== q.answer && <div className="text-red-400 font-bold text-2xl drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]">✗</div>}
-                </button>
-              ))}
+        {questions.map((q, idx) => {
+          const qText = q.question || q.questionEn || q.q || "";
+          const correctIdx = correctIdxList[idx];
+
+          return (
+            <div
+              key={idx}
+              className={`p-8 rounded-2xl border transition-all duration-500 ${
+                submitted
+                  ? (answers[idx] === correctIdx
+                      ? 'border-green-500/30 bg-green-900/10'
+                      : 'border-red-500/30 bg-red-900/10')
+                  : 'border-white/5 bg-slate-800/40 hover:bg-slate-800/60'
+              }`}
+            >
+              <p className="text-xl text-slate-200 mb-6 font-medium">
+                <span className="text-yellow-500 font-bold mr-3 text-2xl opacity-80">
+                  0{idx + 1}
+                </span>
+                {qText}
+              </p>
+
+              <div className="grid gap-3">
+                {(q.options || []).map((opt, optIdx) => {
+                  const isSelected = answers[idx] === optIdx;
+                  const isCorrect = submitted && optIdx === correctIdx;
+                  const isWrongSelected = submitted && isSelected && optIdx !== correctIdx;
+
+                  return (
+                    <button
+                      key={optIdx}
+                      onClick={() => handleSelect(idx, optIdx)}
+                      disabled={submitted}
+                      className={`
+                        w-full text-left p-4 rounded-xl transition-all duration-300
+                        flex items-center justify-between font-medium border relative overflow-hidden group
+                        ${isSelected
+                          ? 'bg-gradient-to-r from-yellow-600 to-yellow-800 text-white border-yellow-500/50 shadow-lg'
+                          : 'bg-white/5 text-slate-400 border-transparent hover:bg-white/10 hover:text-slate-200'}
+                        ${submitted ? 'cursor-default' : ''}
+                      `}
+                    >
+                      <span className="relative z-10">{opt}</span>
+
+                      {isSelected && !submitted && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-yellow-600 to-yellow-800 -z-0" />
+                      )}
+
+                      {isCorrect && (
+                        <CheckCircle
+                          size={24}
+                          className="text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                        />
+                      )}
+
+                      {isWrongSelected && (
+                        <div className="text-red-400 font-bold text-2xl drop-shadow-[0_0_10px_rgba(248,113,113,0.5)]">
+                          ✗
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* （可選）顯示中文解釋 */}
+              {submitted && q.explanationZh && (
+                <div className="mt-4 text-slate-300/80 text-sm leading-relaxed">
+                  {q.explanationZh}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {!submitted ? (
