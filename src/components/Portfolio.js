@@ -11,7 +11,6 @@ const Portfolio = ({
   onReset,
   onSameTopic,
 }) => {
-  // ✅ 最強防呆：沒 data 就顯示提示，不要白屏
   if (!data) {
     return (
       <div className="text-center text-slate-300 py-20">
@@ -37,10 +36,6 @@ const Portfolio = ({
       : []) ||
     [];
 
-  const paragraphsZh =
-    article.paragraphsZh ||
-    [];
-
   const level = data.meta?.level || data.level || "Easy";
   const provider = data.meta?.provider || "unknown";
   const version = data.meta?.version || "";
@@ -61,30 +56,21 @@ const Portfolio = ({
       : [];
 
   const getQuestionEn = (q) =>
-    q.questionEn || q.question || q.q || "";
+    q.questionEn || q.question || q.q || "(No question text)";
 
   const reportRows = useMemo(() => {
     return quiz.map((q, idx) => {
-      const optsRaw = getOptionsEn(q);
-      const opts = Array.isArray(optsRaw) ? optsRaw : [];
-
+      const opts = getOptionsEn(q);
       const correctIdx = correctIndexOf(q);
       const userIdx = answers?.[idx];
 
-      const correctLetter = abc[correctIdx] || "A";
-      const userLetter =
-        typeof userIdx === "number" ? (abc[userIdx] || "-") : "-";
-
       return {
         idx,
-        question: getQuestionEn(q) || "(No question text)",
-        opts,
+        question: getQuestionEn(q),
+        opts: Array.isArray(opts) ? opts : [],
         correctIdx,
         userIdx: typeof userIdx === "number" ? userIdx : null,
-        correctLetter,
-        userLetter,
-        isCorrect:
-          typeof userIdx === "number" && userIdx === correctIdx,
+        isCorrect: typeof userIdx === "number" && userIdx === correctIdx,
       };
     });
   }, [quiz, answers]);
@@ -92,7 +78,7 @@ const Portfolio = ({
   return (
     <div className="w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
-      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
+      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
             <h1 className="text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
@@ -120,7 +106,6 @@ const Portfolio = ({
           </div>
         </div>
 
-        {/* Score */}
         <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5">
           <Award className="text-yellow-400 mr-3" size={28} />
           <div className="text-center">
@@ -135,18 +120,14 @@ const Portfolio = ({
         </div>
       </div>
 
-      {/* Article EN */}
+      {/* Article */}
       <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
         <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Article (EN)
         </h2>
         <div className="space-y-4 text-slate-200 leading-relaxed">
-          {paragraphsEn.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
-          {!paragraphsEn.length && (
-            <p className="text-slate-500">No English article content.</p>
-          )}
+          {paragraphsEn.map((p, i) => <p key={i}>{p}</p>)}
+          {!paragraphsEn.length && <p className="text-slate-500">No article.</p>}
         </div>
       </div>
 
@@ -159,15 +140,14 @@ const Portfolio = ({
           {vocab.map((v, i) => (
             <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5">
               <div className="text-lg font-black text-white">
-                {v.word}
-                {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
+                {v.word} {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
               </div>
               {v.meaningZh && <div className="mt-1 text-slate-200">{v.meaningZh}</div>}
               {v.exampleEn && <div className="mt-2 text-slate-300 text-sm">{v.exampleEn}</div>}
               {v.exampleZh && <div className="mt-1 text-slate-400 text-sm">{v.exampleZh}</div>}
             </div>
           ))}
-          {!vocab.length && <div className="text-slate-500">No vocabulary returned.</div>}
+          {!vocab.length && <div className="text-slate-500">No vocabulary.</div>}
         </div>
       </div>
 
@@ -178,13 +158,12 @@ const Portfolio = ({
         </h2>
 
         <div className="space-y-6">
-          {reportRows.map((r) => (
+          {reportRows.map(r => (
             <div
               key={r.idx}
               className={`p-6 rounded-2xl border ${
-                r.isCorrect
-                  ? "border-green-500/30 bg-green-900/10"
-                  : "border-red-500/30 bg-red-900/10"
+                r.isCorrect ? "border-green-500/30 bg-green-900/10"
+                            : "border-red-500/30 bg-red-900/10"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
@@ -194,51 +173,21 @@ const Portfolio = ({
                   </span>
                   {r.question}
                 </div>
-
-                {r.isCorrect ? (
-                  <CheckCircle2 className="text-green-400 shrink-0" />
-                ) : (
-                  <XCircle className="text-red-400 shrink-0" />
-                )}
+                {r.isCorrect ? <CheckCircle2 className="text-green-400"/> : <XCircle className="text-red-400"/>}
               </div>
 
               <div className="mt-4 space-y-2 text-slate-200">
-                {(r.opts || []).map((opt, i) => {
-                  const isCorrectOpt = i === r.correctIdx;
-                  const isUserOpt = i === r.userIdx;
-
-                  return (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-3 p-3 rounded-xl ${
-                        isCorrectOpt
-                          ? "bg-green-900/20 border border-green-500/30"
-                          : isUserOpt
-                          ? "bg-red-900/20 border border-red-500/30"
-                          : "bg-white/5 border border-white/5"
-                      }`}
-                    >
-                      <div className="font-black text-slate-300">
-                        {abc[i]}.
-                      </div>
-                      <div className="flex-1">{opt}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 text-sm text-slate-300">
-                Your Answer:{" "}
-                <span className="font-bold text-white">{r.userLetter}</span>
-                {"  "}• Correct:{" "}
-                <span className="font-bold text-green-300">{r.correctLetter}</span>
+                {(r.opts || []).map((opt, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="font-black text-slate-300">{abc[i]}.</div>
+                    <div className="flex-1">{opt}</div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
 
-          {!reportRows.length && (
-            <div className="text-slate-500">No quiz returned.</div>
-          )}
+          {!reportRows.length && <div className="text-slate-500">No quiz.</div>}
         </div>
       </div>
 
@@ -248,16 +197,13 @@ const Portfolio = ({
           onClick={onSameTopic}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold tracking-widest uppercase transition"
         >
-          <RefreshCw size={16} />
-          Same Topic
+          <RefreshCw size={16} /> Same Topic
         </button>
-
         <button
           onClick={onReset}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 hover:bg-yellow-50 font-bold tracking-widest uppercase transition"
         >
-          <Home size={16} />
-          Home
+          <Home size={16} /> Home
         </button>
       </div>
     </div>
