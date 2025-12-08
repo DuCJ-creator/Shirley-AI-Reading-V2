@@ -163,7 +163,6 @@ export async function POST(req) {
 
     const parsed = safeJsonParse(rawText);
 
-    // 基本結構檢查
     if (!parsed?.article || !parsed?.vocabulary || !parsed?.quiz) {
       console.warn("[/api/generate] bad AI output, fallback. rawText:", rawText);
       return NextResponse.json(
@@ -171,24 +170,15 @@ export async function POST(req) {
         { status: 200 }
       );
     }
-
-    // ✅ paragraphsEn / paragraphsZh 強制 array
-    const toArray = (x) =>
-      Array.isArray(x) ? x :
-      typeof x === "string" ? x.split(/\n\s*\n/).filter(Boolean) :
-      [];
-
-    parsed.article.paragraphsEn = toArray(parsed.article.paragraphsEn ?? parsed.article.paragraphs);
-    parsed.article.paragraphsZh = toArray(parsed.article.paragraphsZh);
-
-    // ✅ 強制 quiz.answer = A/B/C/D（放 try 裡、return 前）
+    // ✅ 強制 quiz.answer = A/B/C/D（一定要放 try 裡）
     if (Array.isArray(parsed.quiz)) {
       parsed.quiz = parsed.quiz.map(q => {
         let ans = String(q.answer || "A").trim().toUpperCase();
         if (!["A", "B", "C", "D"].includes(ans)) ans = "A";
 
-        // 若 optionsEn/optionsZh 缺，補空陣列避免前端炸
-        q.optionsEn = Array.isArray(q.optionsEn) ? q.optionsEn : (Array.isArray(q.options) ? q.options : []);
+        q.optionsEn = Array.isArray(q.optionsEn)
+          ? q.optionsEn
+          : (Array.isArray(q.options) ? q.options : []);
         q.optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
 
         return { ...q, answer: ans };
@@ -196,10 +186,10 @@ export async function POST(req) {
     }
 
     parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
-
     return NextResponse.json(parsed, { status: 200 });
 
   } catch (err) {
+    // ✅ catch 一定要有大括號
     console.error("[/api/generate] exception:", err);
     return NextResponse.json(
       generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "exception"),
