@@ -8,6 +8,8 @@ export function speak(text, lang = "en-US") {
   u.lang = lang;
   u.rate = 0.95;
   u.pitch = 1.0;
-  window.speechSynthesis.cancel(); // 停掉前一個
+
+  // 停掉前一個，避免重疊
+  window.speechSynthesis.cancel();
   window.speechSynthesis.speak(u);
 }
