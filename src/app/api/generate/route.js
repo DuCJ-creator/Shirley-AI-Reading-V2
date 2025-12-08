@@ -1,10 +1,10 @@
-// src/app/api/generate/route.js
 import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"; // ✅ 確保跑 Node（可用 env / SDK）
 
-const BUILD_VERSION = "route-2025-12-08-v6";
+const BUILD_VERSION = "route-2025-12-08-v7-shuffle";
 
+// ---- fallback mock ----
 function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
   return {
     article: {
@@ -32,8 +32,18 @@ function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
       {
         questionEn: "What is this passage about?",
         questionZh: "這篇文章主要在談什麼？",
-        optionsEn: ["A mock answer A.", "A mock answer B.", "A mock answer C.", "A mock answer D."],
-        optionsZh: ["模擬選項A", "模擬選項B", "模擬選項C", "模擬選項D"],
+        optionsEn: [
+          "It is about an example topic.",
+          "It is about something unrelated.",
+          "It is a math question.",
+          "It is a story about animals."
+        ],
+        optionsZh: [
+          "它在談一個例子主題。",
+          "它在談無關的事。",
+          "這是一個數學題。",
+          "這是一個動物故事。"
+        ],
         answer: "A",
         explanationZh: "這是模擬題目的解釋。"
       }
@@ -42,7 +52,7 @@ function generateMockContent(themeEn, themeZh, level, reason = "no_key") {
   };
 }
 
-// ✅ 你要的 schema：全英/全中兩套 + 答案 A/B/C/D
+// ---- prompt ----
 function buildPrompt(themeEn, themeZh, level) {
   const spec =
     level === "Easy"
@@ -83,8 +93,8 @@ JSON schema (ALL fields required):
     {
       "questionEn": "English question",
       "questionZh": "繁體中文題目",
-      "optionsEn": ["A English option", "B English option", "C English option", "D English option"],
-      "optionsZh": ["A 中文選項", "B 中文選項", "C 中文選項", "D 中文選項"],
+      "optionsEn": ["English option A", "English option B", "English option C", "English option D"],
+      "optionsZh": ["中文選項A", "中文選項B", "中文選項C", "中文選項D"],
       "answer": "A/B/C/D",
       "explanationZh": "繁體中文解釋"
     }
@@ -97,6 +107,7 @@ Important:
 - quiz must include BOTH English and Chinese versions.
 - answer MUST be a single letter: A, B, C, or D.
 - options must be full sentences.
+- The correct answer must NOT always be A. Vary the position of the correct option.
 `;
 }
 
@@ -115,8 +126,44 @@ function safeJsonParse(text) {
   }
 }
 
+// ✅ 工具：把段落統一成 array
+function toArray(x) {
+  if (Array.isArray(x)) return x;
+  if (typeof x === "string") {
+    return x.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+// ✅ 洗牌（英文/中文一起洗）並同步更新答案
+function shuffleWithAnswer(optionsEn = [], optionsZh = [], answerLetter = "A") {
+  const abc = ["A", "B", "C", "D"];
+
+  const ansIdx = abc.indexOf(String(answerLetter).toUpperCase());
+  const correctIdx = ansIdx >= 0 ? ansIdx : 0;
+
+  const pairs = optionsEn.map((en, i) => ({
+    en,
+    zh: optionsZh[i] ?? "",
+    isCorrect: i === correctIdx
+  }));
+
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+
+  const newOptionsEn = pairs.map(p => p.en);
+  const newOptionsZh = pairs.map(p => p.zh);
+
+  const newCorrectIdx = pairs.findIndex(p => p.isCorrect);
+  const newAnswerLetter = abc[newCorrectIdx] || "A";
+
+  return { newOptionsEn, newOptionsZh, newAnswerLetter };
+}
+
 export async function POST(req) {
-  const { themeId, level, themeEn, themeZh } = await req.json();
+  const { level, themeEn, themeZh } = await req.json();
 
   const finalThemeEn = themeEn || "Topic";
   const finalThemeZh = themeZh || "主題";
@@ -137,6 +184,7 @@ export async function POST(req) {
     let rawText = "";
     let provider = "";
 
+    // ✅ Gemini 優先
     if (googleKey) {
       provider = "gemini";
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
@@ -144,7 +192,9 @@ export async function POST(req) {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const result = await model.generateContent(prompt);
       rawText = result.response.text();
-    } else {
+    }
+    // ✅ OpenAI 備用
+    else {
       provider = "openai";
       const OpenAI = (await import("openai")).default;
       const client = new OpenAI({ apiKey: openaiKey });
@@ -170,18 +220,41 @@ export async function POST(req) {
         { status: 200 }
       );
     }
-    // ✅ 強制 quiz.answer = A/B/C/D（一定要放 try 裡）
+
+    // ✅ 統一文章段落欄位
+    parsed.article.paragraphsEn = toArray(
+      parsed.article.paragraphsEn ?? parsed.article.paragraphs
+    );
+    parsed.article.paragraphsZh = toArray(parsed.article.paragraphsZh);
+
+    // ✅ Quiz 答案/選項對齊 + 洗牌 + 重算 ABCD
     if (Array.isArray(parsed.quiz)) {
       parsed.quiz = parsed.quiz.map(q => {
-        let ans = String(q.answer || "A").trim().toUpperCase();
-        if (!["A", "B", "C", "D"].includes(ans)) ans = "A";
-
-        q.optionsEn = Array.isArray(q.optionsEn)
+        // 1) 先拿 options（兼容舊欄位）
+        let optionsEn = Array.isArray(q.optionsEn)
           ? q.optionsEn
           : (Array.isArray(q.options) ? q.options : []);
-        q.optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
 
-        return { ...q, answer: ans };
+        let optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
+
+        // 2) answer 強制成 ABCD（不合法先當 A）
+        let ansRaw = q.answer ?? q.correctAnswer ?? "A";
+        ansRaw = String(ansRaw).trim();
+        let ansLetter = ansRaw.toUpperCase();
+        if (!["A", "B", "C", "D"].includes(ansLetter)) ansLetter = "A";
+
+        // 3) ✅ 後端強制洗牌 + 重算答案
+        const shuffled = shuffleWithAnswer(optionsEn, optionsZh, ansLetter);
+
+        return {
+          ...q,
+          questionEn: q.questionEn || q.question || q.q || "",
+          questionZh: q.questionZh || q.question_zh || "",
+          optionsEn: shuffled.newOptionsEn,
+          optionsZh: shuffled.newOptionsZh,
+          answer: shuffled.newAnswerLetter,
+          explanationZh: q.explanationZh || q.explainZh || ""
+        };
       });
     }
 
@@ -189,7 +262,6 @@ export async function POST(req) {
     return NextResponse.json(parsed, { status: 200 });
 
   } catch (err) {
-    // ✅ catch 一定要有大括號
     console.error("[/api/generate] exception:", err);
     return NextResponse.json(
       generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "exception"),
