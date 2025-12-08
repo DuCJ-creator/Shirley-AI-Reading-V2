@@ -17,11 +17,13 @@ export default function Home() {
   const [selectedTheme, setSelectedTheme] = useState(null);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [generatedData, setGeneratedData] = useState(null);
+
   const [studentInfo, setStudentInfo] = useState({ name: '', className: '', seatNo: '' });
   const [quizResults, setQuizResults] = useState({ answers: {}, score: 0 });
+
+  // ✅ 新增：全英/全繁中切換（預設全英）
   const [isZh, setIsZh] = useState(false);
   const toggleLang = () => setIsZh(v => !v);
-
 
   const treeLayout = getTreeLayout(THEMES);
   const isLoading = stage === 'loading';
@@ -36,7 +38,7 @@ export default function Home() {
     setSelectedLevel(level);
     setStage('loading');
 
-    const themeId = selectedTheme?.id; // ✅ 避免 state race
+    const themeId = selectedTheme?.id;
     if (!themeId) {
       console.error("[page] selectedTheme missing");
       alert("請先選擇主題 / Please select a topic first.");
@@ -46,7 +48,7 @@ export default function Home() {
 
     try {
       const data = await generateContent(themeId, level);
-      console.log("[page] generateContent result meta:", data?.meta);
+      console.log("[page] generateContent meta:", data?.meta);
 
       setGeneratedData(data);
       setStage('reading');
@@ -61,7 +63,7 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
-  // ✅ 同主題同難度重新生成（高級版）
+  // ✅ 同主題同難度重新生成
   const handleRegenerateSame = async () => {
     const themeId = selectedTheme?.id;
     const level = selectedLevel;
@@ -77,7 +79,7 @@ export default function Home() {
 
     try {
       const data = await generateContent(themeId, level);
-      console.log("[page] regenerate result meta:", data?.meta);
+      console.log("[page] regenerate meta:", data?.meta);
 
       setGeneratedData(data);
       setStage("reading");
@@ -93,6 +95,7 @@ export default function Home() {
     setGeneratedData(null);
     setSelectedLevel(null);
     setQuizResults({ answers: {}, score: 0 });
+    setIsZh(false);
     window.scrollTo(0, 0);
   };
 
@@ -124,12 +127,11 @@ export default function Home() {
     setGeneratedData(null);
     setStudentInfo({ name: '', className: '', seatNo: '' });
     setQuizResults({ answers: {}, score: 0 });
-    window.scrollTo(0, 0);
     setIsZh(false);
-
+    window.scrollTo(0, 0);
   };
 
-  // ✅ 小工具：顯示 provider / reason / version
+  // ✅ provider / reason / version badge
   const MetaBadge = ({ meta }) => {
     if (!meta) return null;
     const provider = meta.provider || "unknown";
@@ -153,14 +155,13 @@ export default function Home() {
     );
   };
 
-  // ✅ 高級感 Regenerate 按鈕（玻璃金色霓虹）
+  // ✅ 高級 Regenerate 按鈕（reading）
   const RegenerateButton = () => {
     const disabled = isLoading || !selectedTheme || !selectedLevel;
 
     return (
       <div className="flex justify-center mb-10 no-print">
         <div className="relative">
-          {/* 外層光暈 */}
           <div
             className="absolute -inset-1 rounded-full blur-xl opacity-60
                        bg-gradient-to-r from-yellow-400/40 via-amber-300/30 to-pink-400/40
@@ -181,7 +182,6 @@ export default function Home() {
               }
             `}
           >
-            {/* Icon bubble */}
             <span className={`
               grid place-items-center w-9 h-9 rounded-full
               bg-gradient-to-br from-yellow-500/20 via-amber-500/10 to-white/5
@@ -196,7 +196,6 @@ export default function Home() {
               />
             </span>
 
-            {/* Text */}
             <span className="flex flex-col items-start leading-tight">
               <span className="text-sm font-black tracking-[0.22em] uppercase">
                 Regenerate
@@ -206,14 +205,12 @@ export default function Home() {
               </span>
             </span>
 
-            {/* right sparkle */}
             {!disabled && (
               <span className="ml-1 text-yellow-300/80 text-xs font-bold tracking-widest animate-fadeIn">
                 ✦
               </span>
             )}
 
-            {/* hover shine */}
             {!disabled && (
               <span
                 className="pointer-events-none absolute inset-0 rounded-full opacity-0
@@ -224,7 +221,6 @@ export default function Home() {
             )}
           </button>
 
-          {/* small helper line */}
           {!disabled && (
             <div className="mt-2 text-center text-[11px] text-slate-400/80 tracking-wider">
               Not satisfied? Try another AI take ✨
@@ -232,7 +228,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* keyframes for shine (Tailwind arbitrary) */}
         <style jsx global>{`
           @keyframes shine {
             0% { transform: translateX(-120%); }
@@ -291,7 +286,7 @@ export default function Home() {
         {stage === 'level' && selectedTheme && (
           <div className="flex flex-col items-center justify-center w-full my-10">
             <div className="mb-16 scale-[2.2] transform-gpu filter drop-shadow-[0_0_60px_rgba(255,255,255,0.2)] animate-float">
-              <LightBulb theme={selectedTheme} onClick={() => { }} isSelected={true} isLarge={true} />
+              <LightBulb theme={selectedTheme} onClick={() => { }} isSelected isLarge />
             </div>
             <LevelSelector onSelect={handleLevelSelect} selectedTheme={selectedTheme} onBack={handleBackToHome} />
           </div>
@@ -320,19 +315,17 @@ export default function Home() {
         {stage === 'reading' && generatedData && (
           <div className="py-12 w-full px-4">
             <MetaBadge meta={generatedData.meta} />
-
-            {/* ✅ 高級重新生成按鈕 */}
             <RegenerateButton />
 
-          <ReadingArticle
-  data={generatedData}
-  isZh={isZh}
-  onToggleLang={toggleLang}
-  onFinish={() => {
-    if (generatedData.quiz?.length) setStage('quiz');
-    else alert("目前尚無測驗題目");
-  }}
-/>
+            <ReadingArticle
+              data={generatedData}
+              isZh={isZh}
+              onToggleLang={toggleLang}
+              onFinish={() => {
+                if (generatedData.quiz?.length) setStage('quiz');
+                else alert("目前尚無測驗題目（AI 可能只回傳文章）。");
+              }}
+            />
 
             <VocabSection vocab={generatedData.vocabulary || []} />
 
@@ -353,12 +346,12 @@ export default function Home() {
         {stage === 'quiz' && generatedData && (
           <div className="py-12 w-full px-4">
             <MetaBadge meta={generatedData.meta} />
-           <QuizSection
-  data={generatedData}
-  isZh={isZh}
-  onToggleLang={toggleLang}
-  onComplete={handleQuizComplete}
-/>
+            <QuizSection
+              data={generatedData}
+              isZh={isZh}
+              onToggleLang={toggleLang}
+              onComplete={handleQuizComplete}
+            />
           </div>
         )}
 
@@ -385,6 +378,7 @@ export default function Home() {
                     onChange={e => setStudentInfo({ ...studentInfo, className: e.target.value })}
                   />
                 </div>
+
                 <div className="group/input">
                   <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-widest pl-1">Seat No.</label>
                   <input
@@ -396,6 +390,7 @@ export default function Home() {
                     onChange={e => setStudentInfo({ ...studentInfo, seatNo: e.target.value })}
                   />
                 </div>
+
                 <div className="group/input">
                   <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-widest pl-1">Name</label>
                   <input
