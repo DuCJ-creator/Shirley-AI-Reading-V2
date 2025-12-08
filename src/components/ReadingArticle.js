@@ -6,21 +6,28 @@ import { speak } from '@/utils/useSpeech';
 
 const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
   const article = data?.article || {};
-  const level = data?.meta?.level || "Easy";
+  const level = data?.meta?.level || data?.level || "Easy";
 
-  const title = isZh ? (article.titleZh || "") : (article.titleEn || "");
-  const paragraphs = isZh ? (article.paragraphsZh || []) : (article.paragraphsEn || []);
+  const titleEn = article.titleEn || "Topic";
+  const titleZh = article.titleZh || "";
+
+  const title = isZh ? titleZh : titleEn;
+  const paragraphs = isZh
+    ? (article.paragraphsZh || [])
+    : (article.paragraphsEn || []);
 
   return (
     <div className="w-full max-w-5xl mx-auto bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 text-slate-100 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] p-10 md:p-14 animate-slideUp relative overflow-hidden">
+      {/* Elegant BG Glows */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-900/10 rounded-full blur-[100px] -z-10" />
       <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-green-900/10 rounded-full blur-[80px] -z-10" />
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 border-b border-white/10 pb-8 mt-4 md:mt-0 gap-4">
         <div className="max-w-2xl">
           <div className="text-yellow-400 text-sm font-bold tracking-widest uppercase mb-2">
-            Current Topic: {article.titleEn}{article.titleZh ? `｜${article.titleZh}` : ""}
+            Current Topic: {titleEn}{titleZh ? `｜${titleZh}` : ""}
           </div>
+
           <h2 className="text-3xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 mb-2 leading-tight">
             {title}
           </h2>
@@ -31,7 +38,7 @@ const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
             {level} Reading
           </span>
 
-          {/* ✅ 切換全英/全中 */}
+          {/* ✅ 切換全英 / 全繁中 */}
           <button
             onClick={onToggleLang}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold tracking-widest uppercase border border-white/10 bg-slate-900/60 hover:bg-slate-800/60 transition"
@@ -43,10 +50,10 @@ const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
         </div>
       </div>
 
-      {/* ✅ 段落 + 發音 */}
+      {/* ✅ 段落 + 英文發音 */}
       <div className="prose prose-xl prose-invert max-w-none mb-14 leading-loose font-serif text-slate-300/90 tracking-wide space-y-6">
         {paragraphs.map((p, i) => (
-          <div key={i} className="relative">
+          <div key={i} className="relative pl-0 md:pl-2">
             {!isZh && (
               <button
                 onClick={() => speak(p, "en-US")}
@@ -59,6 +66,12 @@ const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
             <p>{p}</p>
           </div>
         ))}
+
+        {!paragraphs.length && (
+          <p className="text-slate-400/80">
+            No article content returned.
+          </p>
+        )}
       </div>
 
       <div className="flex justify-center">
