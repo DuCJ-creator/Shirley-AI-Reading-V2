@@ -1,124 +1,294 @@
-// src/components/Portfolio.js
 'use client';
 
-import React, { useRef } from 'react';
-import { Printer, Award, RotateCcw, RefreshCw, Lightbulb } from 'lucide-react';
+import React, { useMemo } from "react";
+import { RefreshCw, Home, Award, CheckCircle2, XCircle } from "lucide-react";
 
-const Portfolio = ({ data, studentInfo, quizScore, answers, onReset, onSameTopic }) => {
-  const componentRef = useRef();
+const Portfolio = ({
+  data,
+  studentInfo,
+  quizScore = 0,
+  answers = {},
+  onReset,
+  onSameTopic,
+}) => {
+  const article = data?.article || {};
+  const quiz = Array.isArray(data?.quiz) ? data.quiz : [];
+  const vocab = Array.isArray(data?.vocabulary) ? data.vocabulary : [];
 
-  const handlePrint = () => {
-    window.print();
+  // ✅ 兼容舊欄位（避免 undefined）
+  const titleEn =
+    article.titleEn || article.title || data?.titleEn || data?.title || "Topic";
+  const titleZh =
+    article.titleZh || article.title_zh || data?.titleZh || data?.title_zh || "";
+
+  const paragraphsEn =
+    article.paragraphsEn ||
+    article.paragraphs ||
+    data?.content?.split(/\n\s*\n/).filter(Boolean) ||
+    [];
+
+  const paragraphsZh =
+    article.paragraphsZh ||
+    [];
+
+  const level = data?.meta?.level || data?.level || "Easy";
+  const provider = data?.meta?.provider || "unknown";
+  const version = data?.meta?.version || "";
+
+  const abc = ["A", "B", "C", "D"];
+
+  // ✅ quiz 正解 index（ABCD -> 0..3）
+  const correctIndexOf = (q) => {
+    const ans = String(q.answer || "A").trim().toUpperCase();
+    const map = { A: 0, B: 1, C: 2, D: 3 };
+    return map[ans] ?? 0;
   };
 
-  return (
-    <div className="animate-fadeIn w-full max-w-5xl mx-auto pb-20 px-4">
-      {/* Navigation and Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 no-print bg-slate-800/60 backdrop-blur-md p-6 rounded-2xl border border-white/10 shadow-xl gap-4">
-        <h2 className="text-2xl font-serif text-slate-200 pl-2 border-l-4 border-yellow-500">Your Learning Journey</h2>
-        
-        <div className="flex flex-wrap gap-3 justify-center">
-          <button onClick={handlePrint} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-xl flex items-center space-x-2 font-bold shadow-lg transition-transform hover:scale-105">
-            <Printer size={18} /> <span>Save PDF</span>
-          </button>
-          
-          <button onClick={onSameTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-xl flex items-center space-x-2 font-bold shadow-lg transition-transform hover:scale-105">
-            <RotateCcw size={18} /> <span>Same Topic, New Level</span>
-          </button>
+  // ✅ 取 option array（兼容新舊）
+  const getOptionsEn = (q) =>
+    Array.isArray(q.optionsEn)
+      ? q.optionsEn
+      : Array.isArray(q.options)
+      ? q.options
+      : [];
 
-          <button onClick={onReset} className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-3 rounded-xl flex items-center space-x-2 font-bold shadow-lg transition-transform hover:scale-105">
-            <RefreshCw size={18} /> <span>New Topic</span>
-          </button>
+  // ✅ 取 question（兼容新舊）
+  const getQuestionEn = (q) =>
+    q.questionEn || q.question || q.q || "";
+
+  const reportRows = useMemo(() => {
+    return quiz.map((q, idx) => {
+      const opts = getOptionsEn(q);
+      const correctIdx = correctIndexOf(q);
+      const userIdx = answers?.[idx];
+
+      const correctLetter = abc[correctIdx] || "A";
+      const userLetter =
+        typeof userIdx === "number" ? abc[userIdx] : "-";
+
+      const correctText = opts?.[correctIdx] || "";
+      const userText =
+        typeof userIdx === "number" ? (opts?.[userIdx] || "") : "";
+
+      const isCorrect = typeof userIdx === "number" && userIdx === correctIdx;
+
+      return {
+        idx,
+        question: getQuestionEn(q),
+        opts,
+        correctIdx,
+        userIdx,
+        correctLetter,
+        userLetter,
+        correctText,
+        userText,
+        isCorrect,
+      };
+    });
+  }, [quiz, answers]);
+
+  return (
+    <div className="w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
+      {/* ===== Header ===== */}
+      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-yellow-500/10 blur-[100px] rounded-full" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-500/10 blur-[120px] rounded-full" />
+
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div>
+            <h1 className="text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
+              Learning Portfolio
+            </h1>
+            <p className="mt-2 text-slate-400 tracking-wider">
+              Topic: <span className="text-yellow-300 font-bold">{titleEn}</span>
+              {titleZh && <span className="text-slate-500"> ｜{titleZh}</span>}
+            </p>
+            <p className="text-slate-500 text-sm mt-1">
+              Level: {level} • Provider: {provider} {version && `• ${version}`}
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start md:items-end">
+            <div className="text-slate-400 text-sm tracking-widest uppercase">
+              Student
+            </div>
+            <div className="text-xl font-bold text-white">
+              {studentInfo?.name || "—"}
+            </div>
+            <div className="text-slate-300 text-sm">
+              Class {studentInfo?.className || "—"} • Seat {studentInfo?.seatNo || "—"}
+            </div>
+          </div>
+        </div>
+
+        {/* Score */}
+        <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5">
+          <Award className="text-yellow-400 mr-3" size={28} />
+          <div className="text-center">
+            <div className="text-slate-400 text-xs tracking-[0.2em] uppercase">
+              Quiz Score
+            </div>
+            <div className="text-4xl font-black text-yellow-300">
+              {quizScore}
+              <span className="text-slate-500 text-2xl"> / {quiz.length || 0}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div id="printable-area" className="bg-white text-slate-900 p-12 md:p-16 rounded-xl shadow-2xl printable-content relative font-serif">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
-          <Lightbulb size={400} />
+      {/* ===== Article (EN) ===== */}
+      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+        <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
+          Article (EN)
+        </h2>
+        <div className="space-y-4 text-slate-200 leading-relaxed">
+          {paragraphsEn.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+          {!paragraphsEn.length && (
+            <p className="text-slate-500">No English article content.</p>
+          )}
         </div>
 
-        <div className="flex justify-between items-end border-b-2 border-slate-900 pb-8 mb-10">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">SHIRLEY'S AI READING COACH</h1>
-            <p className="text-slate-500 text-sm tracking-[0.3em] uppercase">Bilingual Literacy Portfolio</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Student Profile</div>
-            <div className="text-2xl font-bold text-slate-900">{studentInfo.name}</div>
-            <div className="text-slate-600">{studentInfo.className} <span className="mx-2 text-slate-300">|</span> No. {studentInfo.seatNo}</div>
-          </div>
-        </div>
+        {/* Optional: ZH summary under fold */}
+        {paragraphsZh.length > 0 && (
+          <details className="mt-6">
+            <summary className="cursor-pointer text-yellow-300 text-sm font-bold tracking-widest uppercase">
+              展開繁中版本
+            </summary>
+            <div className="mt-4 space-y-3 text-slate-300 leading-relaxed">
+              {paragraphsZh.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
 
-        <div className="grid grid-cols-3 gap-6 mb-12">
-          <div className="col-span-2 bg-slate-50 p-6 rounded-lg border border-slate-200">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Theme (主題)</h3>
-            <p className="text-xl font-bold text-indigo-900 leading-tight mb-4">{data.themeEn} <span className="text-base text-slate-500 font-medium">| {data.themeZh}</span></p>
-            
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Article Title</h3>
-            <p className="text-lg font-bold text-slate-800 leading-tight">{data.title}</p>
-            
-            <div className="mt-4 inline-block bg-indigo-100 text-indigo-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">{data.level} Level</div>
-          </div>
-          
-          <div className="bg-slate-900 text-white p-6 rounded-lg flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-600 to-slate-900 opacity-50"></div>
-            <h3 className="relative z-10 text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Assessment</h3>
-            <div className="relative z-10 text-5xl font-black text-white">{quizScore}<span className="text-2xl text-slate-500">/5</span></div>
-          </div>
-        </div>
-
-        <div className="mb-12">
-          <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-widest">01. Reading Material</h3>
-          <div className="text-slate-700 leading-loose text-justify text-lg columns-1 md:columns-2 gap-8">
-            {data.content}
-          </div>
-        </div>
-
-        <div className="mb-12 break-inside-avoid">
-          <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-widest">02. Vocabulary Acquisition</h3>
-          <div className="grid grid-cols-1 gap-0 border border-slate-200 rounded-lg overflow-hidden">
-            {data.vocabulary.map((v, i) => (
-              <div key={i} className={`flex p-4 ${i !== data.vocabulary.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                <div className="w-1/4 pr-4">
-                  <div className="font-bold text-lg text-slate-900">{v.word}</div>
-                  <div className="text-xs text-slate-400 italic font-serif">{v.pos}</div>
-                </div>
-                <div className="w-1/4 border-l border-slate-100 px-4 flex items-center">
-                  <div className="font-bold text-slate-700">{v.zh}</div>
-                </div>
-                <div className="w-1/2 border-l border-slate-100 pl-4 text-sm">
-                  <div className="text-slate-600 italic mb-1">"{v.en_ex}"</div>
-                  <div className="text-slate-400">{v.zh_ex}</div>
+      {/* ===== Vocabulary ===== */}
+      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+        <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
+          Vocabulary
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {vocab.map((v, i) => (
+            <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-black text-white">
+                  {v.word}
+                  {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+              {v.meaningZh && (
+                <div className="mt-1 text-slate-200">{v.meaningZh}</div>
+              )}
+              {v.exampleEn && (
+                <div className="mt-2 text-slate-300 text-sm">{v.exampleEn}</div>
+              )}
+              {v.exampleZh && (
+                <div className="mt-1 text-slate-400 text-sm">{v.exampleZh}</div>
+              )}
+            </div>
+          ))}
 
-        <div className="break-inside-avoid">
-          <h3 className="text-sm font-black text-slate-900 border-b border-slate-200 pb-2 mb-4 uppercase tracking-widest">03. Comprehension Review</h3>
-          <div className="space-y-4">
-            {data.quiz.map((q, i) => (
-              <div key={i} className="flex items-start">
-                <div className={`mt-1 mr-3 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${answers[i] === q.answer ? 'bg-green-600' : 'bg-red-600'}`}>
-                  {answers[i] === q.answer ? '✓' : '✕'}
+          {!vocab.length && (
+            <div className="text-slate-500">No vocabulary returned.</div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== Quiz Review ===== */}
+      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+        <h2 className="text-2xl font-bold text-white mb-6 tracking-widest uppercase">
+          Quiz Review (EN)
+        </h2>
+
+        <div className="space-y-6">
+          {reportRows.map((r) => (
+            <div
+              key={r.idx}
+              className={`p-6 rounded-2xl border ${
+                r.isCorrect
+                  ? "border-green-500/30 bg-green-900/10"
+                  : "border-red-500/30 bg-red-900/10"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="text-lg text-white font-semibold">
+                  <span className="text-yellow-400 font-black mr-2">
+                    {String(r.idx + 1).padStart(2, "0")}
+                  </span>
+                  {r.question || "(No question text)"}
                 </div>
-                <div className="text-sm w-full">
-                  <p className="font-bold text-slate-800 mb-1">Q{i+1}: {q.q}</p>
-                  <div className="flex justify-between text-slate-500 bg-slate-50 p-2 rounded">
-                    <span>Your Ans: <span className={answers[i] === q.answer ? 'text-green-700 font-bold' : 'text-red-600 font-bold'}>{q.options[answers[i] || 0]}</span></span>
-                    {answers[i] !== q.answer && <span className="text-green-700">Correct: {q.options[q.answer]}</span>}
-                  </div>
-                </div>
+
+                {r.isCorrect ? (
+                  <CheckCircle2 className="text-green-400 shrink-0" />
+                ) : (
+                  <XCircle className="text-red-400 shrink-0" />
+                )}
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="mt-16 pt-6 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400 font-medium uppercase tracking-widest">
-          <div>Empowering Global Citizens</div>
-          <div>{new Date().getFullYear()} © Shirley's AI Reading Coach</div>
+              <div className="mt-4 space-y-2 text-slate-200">
+                {r.opts.map((opt, i) => {
+                  const isCorrectOpt = i === r.correctIdx;
+                  const isUserOpt = i === r.userIdx;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-start gap-3 p-3 rounded-xl ${
+                        isCorrectOpt
+                          ? "bg-green-900/20 border border-green-500/30"
+                          : isUserOpt
+                          ? "bg-red-900/20 border border-red-500/30"
+                          : "bg-white/5 border border-white/5"
+                      }`}
+                    >
+                      <div className="font-black text-slate-300">
+                        {abc[i]}.
+                      </div>
+                      <div className="flex-1">{opt}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 text-sm text-slate-300">
+                Your Answer:{" "}
+                <span className="font-bold text-white">
+                  {r.userLetter}
+                </span>
+                {"  "}• Correct:{" "}
+                <span className="font-bold text-green-300">
+                  {r.correctLetter}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {!reportRows.length && (
+            <div className="text-slate-500">No quiz returned.</div>
+          )}
         </div>
+      </div>
+
+      {/* ===== Actions ===== */}
+      <div className="mt-10 flex flex-col md:flex-row gap-4 justify-center no-print">
+        <button
+          onClick={onSameTopic}
+          className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold tracking-widest uppercase transition"
+        >
+          <RefreshCw size={16} />
+          Same Topic
+        </button>
+
+        <button
+          onClick={onReset}
+          className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 hover:bg-yellow-50 font-bold tracking-widest uppercase transition"
+        >
+          <Home size={16} />
+          Home
+        </button>
       </div>
     </div>
   );
