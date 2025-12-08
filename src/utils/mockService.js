@@ -1,6 +1,6 @@
 import { THEMES } from "./constants";
 
-/** ===== 你的 mock（保底）===== */
+/** ===== mock（保底）===== */
 const generateMockContent = (themeId, level, reason = "unknown") => {
   const t = THEMES.find(x => x.id === themeId);
   return {
@@ -22,42 +22,55 @@ const generateMockContent = (themeId, level, reason = "unknown") => {
   };
 };
 
-/** ===== 把任何 API 回傳整理成 components 會吃的格式 ===== */
+/** ===== 把 API 回傳整理成 components 會吃的格式 ===== */
 function normalizeApiResponse(apiJson, themeId, level) {
-  // 1) 先解包 {provider, data}
+  // 1) 解包 {provider, data}
   const raw = apiJson?.data ?? apiJson ?? {};
-
   const theme = THEMES.find(t => t.id === themeId);
 
-  // 2) 文章標題
+  // 2) 標題補強
   const titleEn =
     raw.article?.titleEn ||
+    raw.article?.title ||
     raw.titleEn ||
+    raw.title ||
     theme?.labelEn ||
     "Topic";
 
   const titleZh =
     raw.article?.titleZh ||
+    raw.article?.title_zh ||
     raw.titleZh ||
+    raw.title_zh ||
     theme?.labelZh ||
     "主題";
 
-  // 3) 文章段落（補強欄位吃法）
-  const pEn =
+  // 3) 段落補強 + 強制 array
+  let pEn =
     raw.article?.paragraphs ||
     raw.paragraphs ||
     (raw.articleEn ? raw.articleEn.split(/\n\s*\n/).filter(Boolean) : []) ||
     (raw.article?.en ? raw.article.en.split(/\n\s*\n/).filter(Boolean) : []) ||
     (raw.article?.content ? raw.article.content.split(/\n\s*\n/).filter(Boolean) : []);
 
-  const pZh =
+  if (typeof pEn === "string") {
+    pEn = pEn.split(/\n\s*\n/).filter(Boolean);
+  }
+  if (!Array.isArray(pEn)) pEn = [];
+
+  let pZh =
     raw.article?.paragraphsZh ||
     raw.paragraphsZh ||
     (raw.articleZh ? raw.articleZh.split(/\n\s*\n/).filter(Boolean) : []) ||
     (raw.article?.zh ? raw.article.zh.split(/\n\s*\n/).filter(Boolean) : []) ||
     (raw.article?.contentZh ? raw.article.contentZh.split(/\n\s*\n/).filter(Boolean) : []);
 
-  // 4) 單字
+  if (typeof pZh === "string") {
+    pZh = pZh.split(/\n\s*\n/).filter(Boolean);
+  }
+  if (!Array.isArray(pZh)) pZh = [];
+
+  // 4) 單字：支援 vocabulary / vocab；欄位支援 meaningZh / meaning / zh
   const vocabulary = (raw.vocabulary || raw.vocab || []).map(v => ({
     word: v.word || v.term || "",
     pos: v.pos || v.partOfSpeech || "",
@@ -66,7 +79,7 @@ function normalizeApiResponse(apiJson, themeId, level) {
     exampleZh: v.exampleZh || v.example_zh || v.zhExample || ""
   })).filter(v => v.word);
 
-  // 5) 題目
+  // 5) 題目：支援 quiz / questions；options 支援 string or object
   const quiz = (raw.quiz || raw.questions || []).map(q => {
     const opts = q.options || q.choices || [];
     const options = opts.map(o =>
@@ -127,13 +140,13 @@ export const generateContent = async (themeId, level) => {
     const apiJson = await res.json();
     const normalized = normalizeApiResponse(apiJson, themeId, level);
 
-    // ✅ 修正重點：只要文章有段落，就用 AI 的
+    // ✅ fallback 條件放寬：只要文章有段落就用 AI
     if (!normalized.article?.paragraphs?.length) {
       console.warn("[mockService] normalized has no paragraphs, fallback to mock", apiJson);
       return generateMockContent(themeId, level, "no_paragraphs");
     }
 
-    // quiz / vocabulary 沒有就給空，別整包打回 mock
+    // quiz / vocabulary 沒有就給空，不整包打回 mock
     normalized.vocabulary = normalized.vocabulary || [];
     normalized.quiz = normalized.quiz || [];
     normalized.meta = normalized.meta || { provider: apiJson.provider, level };
@@ -145,7 +158,7 @@ export const generateContent = async (themeId, level) => {
   }
 };
 
-/** ===== 原本 getTreeLayout 保留 ===== */
+/** ===== getTreeLayout 保留 ===== */
 export const getTreeLayout = (themes) => {
   const layout = [];
   let idx = 0;
