@@ -41,6 +41,14 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
     setSubmitted(true);
   };
 
+  // ✅ 判斷選項是否已經自帶 ABCD 標號（A. / A) / A：）
+  const hasLeadingLabel = (text) =>
+    /^[\s]*[ABCD][\.\)\:：]\s+/i.test(String(text || ""));
+
+  // ✅ 移除開頭 ABCD 標號
+  const stripLeadingLabel = (text) =>
+    String(text || "").replace(/^[\s]*[ABCD][\.\)\:：]\s+/i, '');
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-10 bg-slate-900/60 p-10 md:p-14 rounded-3xl backdrop-blur-xl border border-white/10 animate-fadeIn relative shadow-2xl">
       <div className="text-center mb-12">
@@ -50,7 +58,6 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
             Knowledge Check
           </h3>
 
-          {/* ✅ 同步語言切換 */}
           <button
             onClick={onToggleLang}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase border border-white/10 bg-slate-900/60 hover:bg-slate-800/60 transition"
@@ -99,6 +106,9 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                   const isCorrect = submitted && optIdx === correctIdx;
                   const isWrongSelected = submitted && isSelected && optIdx !== correctIdx;
 
+                  const labeled = hasLeadingLabel(opt);
+                  const cleanOpt = stripLeadingLabel(opt);
+
                   return (
                     <button
                       key={optIdx}
@@ -112,10 +122,13 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                       `}
                     >
                       <span className="relative z-10">
-                        <span className="mr-2 font-bold">
-                          {String.fromCharCode(65 + optIdx)}.
-                        </span>
-                        {opt}
+                        {/* ✅ 只有在 option 沒自帶標號時，才補 A/B/C/D */}
+                        {!labeled && (
+                          <span className="mr-2 font-bold">
+                            {String.fromCharCode(65 + optIdx)}.
+                          </span>
+                        )}
+                        {cleanOpt}
                       </span>
 
                       {isCorrect && <CheckCircle size={24} className="text-green-400"/>}
@@ -125,7 +138,6 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                 })}
               </div>
 
-              {/* ✅ 中文模式才顯示繁中解釋 */}
               {submitted && isZh && q.explanationZh && (
                 <div className="mt-4 text-slate-300/80 text-sm leading-relaxed">
                   {q.explanationZh}
