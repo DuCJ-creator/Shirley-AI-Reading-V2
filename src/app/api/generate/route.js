@@ -52,20 +52,22 @@ function buildPrompt(themeEn, themeZh, level) {
       : "350-400 words, advanced academic English";
 
   return `
-You are a bilingual (English + Traditional Chinese) reading material generator.
+You are a bilingual reading material generator.
 
-Topic: "${themeEn}" (繁體中文主題：${themeZh})
+Topic (EN): "${themeEn}"
+Topic (ZH-TW): "${themeZh}"
 Difficulty: ${level}
-Article requirement: ${spec}
+English article requirement: ${spec}
 
 Return ONLY valid JSON, no markdown, no extra text.
 
-JSON schema:
+JSON schema (ALL fields required):
 {
   "article": {
     "titleEn": "...",
     "titleZh": "...(繁體中文)",
-    "paragraphs": ["...", "...", "..."]
+    "paragraphsEn": ["English paragraph 1", "English paragraph 2", "English paragraph 3"],
+    "paragraphsZh": ["繁體中文段落1", "繁體中文段落2", "繁體中文段落3"]
   },
   "vocabulary": [
     {
@@ -79,8 +81,10 @@ JSON schema:
   ],
   "quiz": [
     {
-      "question": "English question",
-      "options": ["A", "B", "C", "D"],
+      "questionEn": "English question",
+      "questionZh": "繁體中文題目",
+      "optionsEn": ["A English option", "B English option", "C English option", "D English option"],
+      "optionsZh": ["A 中文選項", "B 中文選項", "C 中文選項", "D 中文選項"],
       "answer": "A/B/C/D",
       "explanationZh": "繁體中文解釋"
     }
@@ -89,11 +93,12 @@ JSON schema:
 }
 
 Important:
-- meaningZh / exampleZh / explanationZh MUST be Traditional Chinese.
-- quiz options must be full sentences, not single letters.
+- paragraphsEn must be English only. paragraphsZh must be Traditional Chinese only.
+- quiz must include BOTH English and Chinese versions (questionEn/Zh, optionsEn/Zh).
+- answer MUST be a single letter: A, B, C, or D.
+- options must be full sentences.
 `;
 }
-
 // ---- 防呆 JSON 解析：抓出最像 JSON 的區塊 ----
 function safeJsonParse(text) {
   try {
@@ -209,7 +214,16 @@ return NextResponse.json(parsed, { status: 200 });
 
     parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
     return NextResponse.json(parsed, { status: 200 });
-  } catch (err) {
+  } catch (err) 
+    // ✅ 強制 quiz.answer = A/B/C/D
+if (Array.isArray(parsed.quiz)) {
+  parsed.quiz = parsed.quiz.map(q => {
+    let ans = String(q.answer || "A").trim().toUpperCase();
+    if (!["A","B","C","D"].includes(ans)) ans = "A";
+    return { ...q, answer: ans };
+  });
+}
+  {
     // ✅ D) catch error log：抓 import/SDK/key/網路等所有錯
     console.error("[/api/generate] AI error:", err);
     return NextResponse.json(
