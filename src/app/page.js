@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Sparkles, User, ArrowLeft, RefreshCw } from 'lucide-react';
 import { THEMES } from '@/utils/constants';
 import { getTreeLayout, generateContent } from '@/utils/mockService';
@@ -12,6 +12,50 @@ import VocabSection from '@/components/VocabSection';
 import QuizSection from '@/components/QuizSection';
 import Portfolio from '@/components/Portfolio';
 
+/** ✅ Error Boundary：避免 portfolio 爆掉就整頁白屏 */
+class PortfolioBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, err: null };
+  }
+  static getDerivedStateFromError(err) {
+    return { hasError: true, err };
+  }
+  componentDidCatch(err, info) {
+    console.error('[PortfolioBoundary] crash:', err, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full max-w-3xl mx-auto mt-10 bg-rose-900/30 border border-rose-400/30 rounded-3xl p-8 text-rose-100 shadow-xl">
+          <h3 className="text-2xl font-black mb-2">Portfolio Render Failed</h3>
+          <p className="text-sm opacity-80 mb-4">
+            Portfolio 元件渲染時發生錯誤，請打開 Console 看真正炸在哪一行。
+          </p>
+          <pre className="text-xs whitespace-pre-wrap bg-black/40 p-4 rounded-xl overflow-auto">
+            {String(this.state.err)}
+          </pre>
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={this.props.onBack}
+              className="px-5 py-2 rounded-full bg-white text-slate-900 font-bold"
+            >
+              Back
+            </button>
+            <button
+              onClick={this.props.onHome}
+              className="px-5 py-2 rounded-full bg-white/10 border border-white/10 text-white font-bold"
+            >
+              Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function Home() {
   const [stage, setStage] = useState('home');
   const [selectedTheme, setSelectedTheme] = useState(null);
@@ -21,7 +65,7 @@ export default function Home() {
   const [studentInfo, setStudentInfo] = useState({ name: '', className: '', seatNo: '' });
   const [quizResults, setQuizResults] = useState({ answers: {}, score: 0 });
 
-  // ✅ 新增：全英/全繁中切換（預設全英）
+  // ✅ 全英/全繁中切換（預設英）
   const [isZh, setIsZh] = useState(false);
   const toggleLang = () => setIsZh(v => !v);
 
@@ -80,7 +124,6 @@ export default function Home() {
     try {
       const data = await generateContent(themeId, level);
       console.log("[page] regenerate meta:", data?.meta);
-
       setGeneratedData(data);
       setStage("reading");
     } catch (err) {
@@ -131,7 +174,7 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
-  // ✅ provider / reason / version badge
+  // ✅ provider badge
   const MetaBadge = ({ meta }) => {
     if (!meta) return null;
     const provider = meta.provider || "unknown";
@@ -155,7 +198,7 @@ export default function Home() {
     );
   };
 
-  // ✅ 高級 Regenerate 按鈕（reading）
+  // ✅ 高級 Regenerate 按鈕
   const RegenerateButton = () => {
     const disabled = isLoading || !selectedTheme || !selectedLevel;
 
@@ -210,15 +253,6 @@ export default function Home() {
                 ✦
               </span>
             )}
-
-            {!disabled && (
-              <span
-                className="pointer-events-none absolute inset-0 rounded-full opacity-0
-                           bg-gradient-to-r from-transparent via-white/20 to-transparent
-                           group-hover:opacity-100 group-hover:animate-[shine_1.2s_ease-in-out]
-                           transition-opacity"
-              />
-            )}
           </button>
 
           {!disabled && (
@@ -227,13 +261,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        <style jsx global>{`
-          @keyframes shine {
-            0% { transform: translateX(-120%); }
-            100% { transform: translateX(120%); }
-          }
-        `}</style>
       </div>
     );
   };
@@ -250,7 +277,6 @@ export default function Home() {
         <p className="text-indigo-200/80 text-lg md:text-xl tracking-[0.3em] uppercase font-bold drop-shadow-md">
           <span className="text-yellow-400">★</span> Explore • Learn • Grow • 全球素養閱讀 <span className="text-yellow-400">★</span>
         </p>
-
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2/3 h-[1px] bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent shadow-[0_0_10px_rgba(234,179,8,0.5)]"></div>
       </header>
 
@@ -264,7 +290,6 @@ export default function Home() {
 
             <div className="flex flex-col items-center gap-1 relative mt-4">
               <TreeStar />
-
               <div className="flex flex-col items-center space-y-6 relative z-10">
                 {treeLayout.map((row, rowIdx) => (
                   <div key={rowIdx} className="flex justify-center gap-6 md:gap-10 px-4">
@@ -286,7 +311,7 @@ export default function Home() {
         {stage === 'level' && selectedTheme && (
           <div className="flex flex-col items-center justify-center w-full my-10">
             <div className="mb-16 scale-[2.2] transform-gpu filter drop-shadow-[0_0_60px_rgba(255,255,255,0.2)] animate-float">
-              <LightBulb theme={selectedTheme} onClick={() => { }} isSelected isLarge />
+              <LightBulb theme={selectedTheme} onClick={() => {}} isSelected isLarge />
             </div>
             <LevelSelector onSelect={handleLevelSelect} selectedTheme={selectedTheme} onBack={handleBackToHome} />
           </div>
@@ -298,15 +323,16 @@ export default function Home() {
               <div className="absolute inset-0 border-2 border-slate-500/20 rounded-full animate-[spin_3s_linear_infinite]"></div>
               <div className="absolute inset-2 border-2 border-t-yellow-400 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-[spin_1.5s_linear_infinite] shadow-[0_0_15px_rgba(250,204,21,0.5)]"></div>
               <div className="absolute inset-6 border-2 border-r-red-500 border-t-transparent border-b-transparent border-l-transparent rounded-full animate-[spin_2s_linear_reverse_infinite] shadow-[0_0_15px_rgba(236,72,153,0.5)]"></div>
-
               <div className="absolute inset-0 flex items-center justify-center">
                 <Sparkles className="text-white animate-pulse" size={48} />
               </div>
             </div>
-            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-6 text-center">AI is Crafting Your Lesson</h2>
+            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-6 text-center">
+              AI is Crafting Your Lesson
+            </h2>
             <div className="flex flex-col items-center space-y-2">
               <span className="text-slate-400 text-lg uppercase tracking-widest">Generating Content For</span>
-              <span className="text-2xl font-bold text-yellow-300 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{selectedTheme?.labelEn}</span>
+              <span className="text-2xl font-bold text-yellow-300">{selectedTheme?.labelEn}</span>
               <span className="text-slate-400 font-serif">{selectedTheme?.labelZh}</span>
             </div>
           </div>
@@ -334,12 +360,6 @@ export default function Home() {
                 目前沒有測驗題目（quiz 為空），你可以先閱讀文章或重新生成一次。
               </div>
             )}
-
-            <div className="text-center mt-20">
-              <span className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase border border-white/10 px-6 py-3 rounded-full bg-slate-900/50 backdrop-blur">
-                Step 1: Read & Learn • Step 2: Quiz & Review
-              </span>
-            </div>
           </div>
         )}
 
@@ -357,9 +377,9 @@ export default function Home() {
 
         {stage === 'info' && (
           <div className="flex items-center justify-center animate-fadeIn w-full my-16 px-4">
-            <form onSubmit={handleInfoSubmit} className="bg-slate-900/60 backdrop-blur-2xl p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] max-w-xl w-full border border-white/10 relative overflow-hidden group">
+            <form onSubmit={handleInfoSubmit} className="bg-slate-900/60 backdrop-blur-2xl p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] max-w-xl w-full border border-white/10">
               <div className="text-center mb-12">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 flex items-center justify-center mx-auto mb-6 shadow-[0_10px_30px_rgba(234,179,8,0.4)] rotate-3 hover:rotate-6 transition-transform">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-500 to-yellow-700 flex items-center justify-center mx-auto mb-6">
                   <User size={40} className="text-white" />
                 </div>
                 <h2 className="text-4xl font-bold text-white mb-2">Great Job!</h2>
@@ -367,44 +387,44 @@ export default function Home() {
               </div>
 
               <div className="space-y-8">
-                <div className="group/input">
+                <div>
                   <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-widest pl-1">Class</label>
                   <input
                     required
                     type="text"
                     placeholder="e.g., 901"
-                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
+                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white"
                     value={studentInfo.className}
                     onChange={e => setStudentInfo({ ...studentInfo, className: e.target.value })}
                   />
                 </div>
 
-                <div className="group/input">
+                <div>
                   <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-widest pl-1">Seat No.</label>
                   <input
                     required
                     type="text"
                     placeholder="e.g., 15"
-                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
+                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white"
                     value={studentInfo.seatNo}
                     onChange={e => setStudentInfo({ ...studentInfo, seatNo: e.target.value })}
                   />
                 </div>
 
-                <div className="group/input">
+                <div>
                   <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-widest pl-1">Name</label>
                   <input
                     required
                     type="text"
                     placeholder="Your Full Name"
-                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white placeholder-slate-600 focus:border-yellow-400 focus:bg-slate-800/80 focus:outline-none focus:ring-1 focus:ring-yellow-400 transition-all text-lg"
+                    className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 text-white"
                     value={studentInfo.name}
                     onChange={e => setStudentInfo({ ...studentInfo, name: e.target.value })}
                   />
                 </div>
               </div>
 
-              <button type="submit" className="w-full mt-12 bg-white text-slate-900 hover:bg-yellow-50 font-bold text-lg py-4 rounded-xl shadow-[0_0_30px_rgba(255,255,255,0.2)] transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2">
+              <button type="submit" className="w-full mt-12 bg-white text-slate-900 font-bold text-lg py-4 rounded-xl flex items-center justify-center gap-2">
                 <span>View Portfolio</span> <ArrowLeft className="rotate-180" size={18} />
               </button>
             </form>
@@ -412,14 +432,17 @@ export default function Home() {
         )}
 
         {stage === 'portfolio' && generatedData && (
-          <Portfolio
-            data={generatedData}
-            studentInfo={studentInfo}
-            quizScore={quizResults.score}
-            answers={quizResults.answers}
-            onReset={resetApp}
-            onSameTopic={handleBackToLevel}
-          />
+          <PortfolioBoundary onBack={handleBackToLevel} onHome={resetApp}>
+            <Portfolio
+              data={generatedData}
+              studentInfo={studentInfo}
+              quizScore={quizResults.score}
+              answers={quizResults.answers}
+              onReset={resetApp}
+              // ✅ 這裡改成真正的同主題再生
+              onSameTopic={handleRegenerateSame}
+            />
+          </PortfolioBoundary>
         )}
 
       </main>
@@ -429,7 +452,6 @@ export default function Home() {
           <p className="mb-2"><strong className="text-yellow-500/80">Disclaimer:</strong> Kindly note that the reading materials are thoughtfully crafted by AI—and while every effort is made for accuracy, occasional slips may still occur.</p>
           <p><strong className="text-yellow-500/80">敬請留意：</strong> 本閱讀材料由人工智慧精心生成，雖力求準確，偶有疏漏仍在所難免。</p>
         </div>
-
         <p className="font-medium tracking-widest uppercase mb-2">Designed for Global Education</p>
         <p className="opacity-50">&copy; 2025 Shirley's AI Reading Coach</p>
       </footer>
