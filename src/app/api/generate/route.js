@@ -179,6 +179,24 @@ export async function POST(req) {
     if (!parsed || !parsed.article?.paragraphs?.length) {
       console.warn("[/api/generate] bad AI output, fallback to mock");
       console.warn("[/api/generate] rawText:", rawText);
+      const p = parsed.article?.paragraphs;
+if (typeof p === "string") {
+  parsed.article.paragraphs = p.split(/\n\s*\n/).filter(Boolean);
+} else if (!Array.isArray(p)) {
+  parsed.article.paragraphs = [];
+}
+
+// （可選）避免 paragraphsZh 不是陣列導致元件炸
+if (!Array.isArray(parsed.article.paragraphsZh)) {
+  parsed.article.paragraphsZh = [];
+}
+
+// 保險：缺的欄位補空陣列
+parsed.vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
+parsed.quiz = Array.isArray(parsed.quiz) ? parsed.quiz : [];
+
+parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
+return NextResponse.json(parsed, { status: 200 });
       return NextResponse.json(
         generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "bad_output"),
         { status: 200 }
