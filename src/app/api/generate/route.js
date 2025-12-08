@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs"; // ✅ 確保跑 Node（可用 env / SDK）
 
-const BUILD_VERSION = "route-2025-12-08-v5";
+const BUILD_VERSION = "route-2025-12-08-v5-fixed";
 
 // ---- fallback mock（你可自行換回你原本的 mock）----
-function generateMockContent(themeEn, themeZh, level) {
+function generateMockContent(themeEn, themeZh, level, reason = "unknown") {
   return {
     article: {
       titleEn: themeEn,
@@ -28,11 +28,17 @@ function generateMockContent(themeEn, themeZh, level) {
     quiz: [
       {
         question: "What is this passage about?",
-        options: ["A", "B", "C", "D"],
-        answer: "A"
+        options: [
+          "It is a mock passage.",
+          "It is about animals.",
+          "It is about sports.",
+          "It is about history."
+        ],
+        answer: "A",
+        explanationZh: "因為 AI 生成失敗，所以顯示備援內容。"
       }
     ],
-    meta: { provider: "mock", level, version: BUILD_VERSION }
+    meta: { provider: "mock", reason, level, version: BUILD_VERSION }
   };
 }
 
@@ -106,16 +112,22 @@ function safeJsonParse(text) {
 export async function POST(req) {
   const { themeId, level, themeEn, themeZh } = await req.json();
 
+  // ✅ A) request log：確認有 hit 到 API
+  console.log("[/api/generate] request:", { themeId, level, themeEn, themeZh });
+
   const finalThemeEn = themeEn || "Topic";
   const finalThemeZh = themeZh || "主題";
-  const prompt = buildPrompt(finalThemeEn, finalThemeZh, level || "Easy");
+  const finalLevel = level || "Easy";
+  const prompt = buildPrompt(finalThemeEn, finalThemeZh, finalLevel);
 
   const googleKey = process.env.GOOGLE_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
+  // ✅ B) 沒 key 就 warn + 回 mock
   if (!googleKey && !openaiKey) {
+    console.warn("[/api/generate] no API key, fallback to mock");
     return NextResponse.json(
-      generateMockContent(finalThemeEn, finalThemeZh, level),
+      generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "no_key"),
       { status: 200 }
     );
   }
@@ -130,8 +142,12 @@ export async function POST(req) {
       const { GoogleGenerativeAI } = await import("@google/generative-ai");
       const genAI = new GoogleGenerativeAI(googleKey);
 
-      // gemini-1.5-flash / gemini-1.5-pro 都可
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        // ✅ JSON mode：大幅降低亂吐字/markdown機率
+        generationConfig: { responseMimeType: "application/json" }
+      });
+
       const result = await model.generateContent(prompt);
       rawText = result.response.text();
     }
@@ -153,21 +169,33 @@ export async function POST(req) {
       rawText = completion.choices?.[0]?.message?.content || "";
     }
 
+    console.log("[/api/generate] provider:", provider);
+    console.log("[/api/generate] rawText preview:", rawText.slice(0, 200));
+
     const parsed = safeJsonParse(rawText);
 
-    if (!parsed || !parsed.article || !parsed.vocabulary || !parsed.quiz) {
-      // AI 回得怪就 fallback
+    // ✅ C) 放寬回退條件：只要文章段落有就先用 AI
+    // (quiz/vocab 空就讓前端吃空陣列，不整包打回 mock)
+    if (!parsed || !parsed.article?.paragraphs?.length) {
+      console.warn("[/api/generate] bad AI output, fallback to mock");
+      console.warn("[/api/generate] rawText:", rawText);
       return NextResponse.json(
-        generateMockContent(finalThemeEn, finalThemeZh, level),
+        generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "bad_output"),
         { status: 200 }
       );
     }
 
-    parsed.meta = { provider, level, version: BUILD_VERSION };
+    // 保險：缺的欄位補空陣列
+    parsed.vocabulary = Array.isArray(parsed.vocabulary) ? parsed.vocabulary : [];
+    parsed.quiz = Array.isArray(parsed.quiz) ? parsed.quiz : [];
+
+    parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
     return NextResponse.json(parsed, { status: 200 });
   } catch (err) {
+    // ✅ D) catch error log：抓 import/SDK/key/網路等所有錯
+    console.error("[/api/generate] AI error:", err);
     return NextResponse.json(
-      generateMockContent(finalThemeEn, finalThemeZh, level),
+      generateMockContent(finalThemeEn, finalThemeZh, finalLevel, "exception"),
       { status: 200 }
     );
   }
