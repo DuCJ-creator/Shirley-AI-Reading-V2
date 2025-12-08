@@ -17,7 +17,11 @@ const VocabSection = ({ vocab = [] }) => {
             <div className="flex items-center justify-between">
               <div className="text-xl font-black text-white">
                 {v.word}
-                {v.pos && <span className="ml-2 text-sm text-slate-400 font-semibold">{v.pos}</span>}
+                {v.pos && (
+                  <span className="ml-2 text-sm text-slate-400 font-semibold">
+                    {v.pos}
+                  </span>
+                )}
               </div>
 
               <button
