@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, User, ArrowLeft } from 'lucide-react';
+import { Sparkles, User, ArrowLeft, RefreshCw } from 'lucide-react';
 import { THEMES } from '@/utils/constants';
 import { getTreeLayout, generateContent } from '@/utils/mockService';
 import { ChristmasTree, Snowfall, TreeStar } from '@/components/ChristmasElements';
@@ -21,6 +21,7 @@ export default function Home() {
   const [quizResults, setQuizResults] = useState({ answers: {}, score: 0 });
 
   const treeLayout = getTreeLayout(THEMES);
+  const isLoading = stage === 'loading';
 
   const handleThemeClick = (theme) => {
     setSelectedTheme(theme);
@@ -55,6 +56,33 @@ export default function Home() {
     }
 
     window.scrollTo(0, 0);
+  };
+
+  // ✅ 同主題同難度重新生成（高級版）
+  const handleRegenerateSame = async () => {
+    const themeId = selectedTheme?.id;
+    const level = selectedLevel;
+
+    if (!themeId || !level) {
+      alert("缺少主題或難度，請重新選擇 / Missing theme or level.");
+      setStage("level");
+      return;
+    }
+
+    setStage("loading");
+    window.scrollTo(0, 0);
+
+    try {
+      const data = await generateContent(themeId, level);
+      console.log("[page] regenerate result meta:", data?.meta);
+
+      setGeneratedData(data);
+      setStage("reading");
+    } catch (err) {
+      console.error("[page] regenerate error:", err);
+      alert("重新生成失敗，請再試一次 / Regeneration failed, please retry.");
+      setStage("reading");
+    }
   };
 
   const handleBackToLevel = () => {
@@ -116,6 +144,96 @@ export default function Home() {
         >
           provider: {provider}{reason}{version}
         </div>
+      </div>
+    );
+  };
+
+  // ✅ 高級感 Regenerate 按鈕（玻璃金色霓虹）
+  const RegenerateButton = () => {
+    const disabled = isLoading || !selectedTheme || !selectedLevel;
+
+    return (
+      <div className="flex justify-center mb-10 no-print">
+        <div className="relative">
+          {/* 外層光暈 */}
+          <div
+            className="absolute -inset-1 rounded-full blur-xl opacity-60
+                       bg-gradient-to-r from-yellow-400/40 via-amber-300/30 to-pink-400/40
+                       animate-pulse"
+          />
+          <button
+            onClick={handleRegenerateSame}
+            disabled={disabled}
+            aria-label="Regenerate with same topic and level"
+            className={`
+              relative group flex items-center gap-3 px-7 py-3.5 rounded-full
+              border border-white/10 backdrop-blur-2xl
+              shadow-[0_0_35px_rgba(250,204,21,0.20)]
+              transition-all duration-400
+              ${disabled
+                ? "bg-slate-900/60 text-slate-500 cursor-not-allowed opacity-60"
+                : "bg-gradient-to-b from-white/10 to-white/5 text-yellow-100 hover:text-white hover:border-yellow-300/50 hover:bg-white/10"
+              }
+            `}
+          >
+            {/* Icon bubble */}
+            <span className={`
+              grid place-items-center w-9 h-9 rounded-full
+              bg-gradient-to-br from-yellow-500/20 via-amber-500/10 to-white/5
+              border border-white/10
+              shadow-inner shadow-yellow-300/10
+              ${disabled ? "" : "group-hover:shadow-yellow-200/30"}
+              transition-all duration-300
+            `}>
+              <RefreshCw
+                size={18}
+                className={disabled ? "" : "group-hover:rotate-180 transition-transform duration-500"}
+              />
+            </span>
+
+            {/* Text */}
+            <span className="flex flex-col items-start leading-tight">
+              <span className="text-sm font-black tracking-[0.22em] uppercase">
+                Regenerate
+              </span>
+              <span className="text-[11px] opacity-80 tracking-wider">
+                同主題・同難度重新生成
+              </span>
+            </span>
+
+            {/* right sparkle */}
+            {!disabled && (
+              <span className="ml-1 text-yellow-300/80 text-xs font-bold tracking-widest animate-fadeIn">
+                ✦
+              </span>
+            )}
+
+            {/* hover shine */}
+            {!disabled && (
+              <span
+                className="pointer-events-none absolute inset-0 rounded-full opacity-0
+                           bg-gradient-to-r from-transparent via-white/20 to-transparent
+                           group-hover:opacity-100 group-hover:animate-[shine_1.2s_ease-in-out]
+                           transition-opacity"
+              />
+            )}
+          </button>
+
+          {/* small helper line */}
+          {!disabled && (
+            <div className="mt-2 text-center text-[11px] text-slate-400/80 tracking-wider">
+              Not satisfied? Try another AI take ✨
+            </div>
+          )}
+        </div>
+
+        {/* keyframes for shine (Tailwind arbitrary) */}
+        <style jsx global>{`
+          @keyframes shine {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(120%); }
+          }
+        `}</style>
       </div>
     );
   };
@@ -188,18 +306,19 @@ export default function Home() {
             <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-6 text-center">AI is Crafting Your Lesson</h2>
             <div className="flex flex-col items-center space-y-2">
               <span className="text-slate-400 text-lg uppercase tracking-widest">Generating Content For</span>
-              <span className="text-2xl font-bold text-yellow-300 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{selectedTheme.labelEn}</span>
-              <span className="text-slate-400 font-serif">{selectedTheme.labelZh}</span>
+              <span className="text-2xl font-bold text-yellow-300 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">{selectedTheme?.labelEn}</span>
+              <span className="text-slate-400 font-serif">{selectedTheme?.labelZh}</span>
             </div>
           </div>
         )}
 
         {stage === 'reading' && generatedData && (
           <div className="py-12 w-full px-4">
-            {/* ✅ provider/reason badge */}
             <MetaBadge meta={generatedData.meta} />
 
-            {/* ✅ 只有題目存在才允許進 quiz */}
+            {/* ✅ 高級重新生成按鈕 */}
+            <RegenerateButton />
+
             <ReadingArticle
               data={generatedData}
               onFinish={() => {
@@ -213,7 +332,6 @@ export default function Home() {
 
             <VocabSection vocab={generatedData.vocabulary || []} />
 
-            {/* ✅ 題目為空提示 */}
             {!generatedData.quiz?.length && (
               <div className="mt-10 text-center text-amber-200/80 text-sm">
                 目前沒有測驗題目（quiz 為空），你可以先閱讀文章或重新生成一次。
