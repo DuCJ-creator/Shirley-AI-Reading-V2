@@ -1,7 +1,7 @@
 import { THEMES } from "./constants";
 
 /** ===== 你的 mock（保底）===== */
-const generateMockContent = (themeId, level) => {
+const generateMockContent = (themeId, level, reason = "unknown") => {
   const t = THEMES.find(x => x.id === themeId);
   return {
     article: {
@@ -18,7 +18,7 @@ const generateMockContent = (themeId, level) => {
     },
     vocabulary: [],
     quiz: [],
-    meta: { provider: "mock", level }
+    meta: { provider: "mock", reason, level }
   };
 };
 
@@ -27,31 +27,37 @@ function normalizeApiResponse(apiJson, themeId, level) {
   // 1) 先解包 {provider, data}
   const raw = apiJson?.data ?? apiJson ?? {};
 
-  // 2) 文章：支援你可能遇到的各種欄位
+  const theme = THEMES.find(t => t.id === themeId);
+
+  // 2) 文章標題
   const titleEn =
     raw.article?.titleEn ||
     raw.titleEn ||
-    THEMES.find(t => t.id === themeId)?.labelEn ||
+    theme?.labelEn ||
     "Topic";
 
   const titleZh =
     raw.article?.titleZh ||
     raw.titleZh ||
-    THEMES.find(t => t.id === themeId)?.labelZh ||
+    theme?.labelZh ||
     "主題";
 
-  // 可能是 article.paragraphs / articleEn / article.en 等
+  // 3) 文章段落（補強欄位吃法）
   const pEn =
     raw.article?.paragraphs ||
+    raw.paragraphs ||
     (raw.articleEn ? raw.articleEn.split(/\n\s*\n/).filter(Boolean) : []) ||
-    (raw.article?.en ? raw.article.en.split(/\n\s*\n/).filter(Boolean) : []);
+    (raw.article?.en ? raw.article.en.split(/\n\s*\n/).filter(Boolean) : []) ||
+    (raw.article?.content ? raw.article.content.split(/\n\s*\n/).filter(Boolean) : []);
 
   const pZh =
     raw.article?.paragraphsZh ||
+    raw.paragraphsZh ||
     (raw.articleZh ? raw.articleZh.split(/\n\s*\n/).filter(Boolean) : []) ||
-    (raw.article?.zh ? raw.article.zh.split(/\n\s*\n/).filter(Boolean) : []);
+    (raw.article?.zh ? raw.article.zh.split(/\n\s*\n/).filter(Boolean) : []) ||
+    (raw.article?.contentZh ? raw.article.contentZh.split(/\n\s*\n/).filter(Boolean) : []);
 
-  // 3) 單字：支援 vocabulary / vocab；欄位支援 meaningZh / meaning / zh
+  // 4) 單字
   const vocabulary = (raw.vocabulary || raw.vocab || []).map(v => ({
     word: v.word || v.term || "",
     pos: v.pos || v.partOfSpeech || "",
@@ -60,13 +66,9 @@ function normalizeApiResponse(apiJson, themeId, level) {
     exampleZh: v.exampleZh || v.example_zh || v.zhExample || ""
   })).filter(v => v.word);
 
-  // 4) 題目：支援 quiz / questions；options 支援 string or object
+  // 5) 題目
   const quiz = (raw.quiz || raw.questions || []).map(q => {
-    const opts =
-      q.options ||
-      q.choices ||
-      [];
-
+    const opts = q.options || q.choices || [];
     const options = opts.map(o =>
       typeof o === "string" ? o : (o.textEn || o.text || "")
     );
@@ -98,6 +100,13 @@ export const generateContent = async (themeId, level) => {
   const themeData = THEMES.find(t => t.id === themeId);
 
   try {
+    console.log("[mockService] calling /api/generate", {
+      themeId,
+      level,
+      themeEn: themeData?.labelEn,
+      themeZh: themeData?.labelZh
+    });
+
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -109,19 +118,30 @@ export const generateContent = async (themeId, level) => {
       })
     });
 
-    if (!res.ok) throw new Error("API failed");
-    const apiJson = await res.json();
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("[mockService] API not ok:", res.status, errText);
+      return generateMockContent(themeId, level, `api_${res.status}`);
+    }
 
+    const apiJson = await res.json();
     const normalized = normalizeApiResponse(apiJson, themeId, level);
 
-    // 如果 normalize 後還是沒文章/題目，就回 mock
-    if (!normalized.article?.paragraphs?.length || !normalized.quiz?.length) {
-      return generateMockContent(themeId, level);
+    // ✅ 修正重點：只要文章有段落，就用 AI 的
+    if (!normalized.article?.paragraphs?.length) {
+      console.warn("[mockService] normalized has no paragraphs, fallback to mock", apiJson);
+      return generateMockContent(themeId, level, "no_paragraphs");
     }
+
+    // quiz / vocabulary 沒有就給空，別整包打回 mock
+    normalized.vocabulary = normalized.vocabulary || [];
+    normalized.quiz = normalized.quiz || [];
+    normalized.meta = normalized.meta || { provider: apiJson.provider, level };
 
     return normalized;
   } catch (e) {
-    return generateMockContent(themeId, level);
+    console.error("[mockService] fetch /api/generate error:", e);
+    return generateMockContent(themeId, level, "exception");
   }
 };
 
