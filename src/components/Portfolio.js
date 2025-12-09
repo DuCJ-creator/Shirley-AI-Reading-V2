@@ -81,22 +81,22 @@ const Portfolio = ({
   return (
     <div id="print-root" className="print-root w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
-      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl break-inside-avoid">
+      <div className="print-card bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl break-inside-avoid">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <h1 className="text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
+            <h1 className="print-title text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
               Learning Portfolio
             </h1>
-            <p className="mt-2 text-slate-400 tracking-wider">
+            <p className="mt-2 text-slate-400 tracking-wider print-meta">
               Topic: <span className="text-yellow-300 font-bold">{titleEn}</span>
               {titleZh && <span className="text-slate-500"> ｜{titleZh}</span>}
             </p>
-            <p className="text-slate-500 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1 print-meta">
               Level: {level} • Provider: {provider} {version && `• ${version}`}
             </p>
           </div>
 
-          <div className="flex flex-col items-start md:items-end">
+          <div className="flex flex-col items-start md:items-end print-student">
             <div className="text-slate-400 text-sm tracking-widest uppercase">
               Student
             </div>
@@ -110,7 +110,7 @@ const Portfolio = ({
         </div>
 
         {/* Score */}
-        <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5 break-inside-avoid">
+        <div className="print-score mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5 break-inside-avoid">
           <Award className="text-yellow-400 mr-3" size={28} />
           <div className="text-center">
             <div className="text-slate-400 text-xs tracking-[0.2em] uppercase">
@@ -125,30 +125,30 @@ const Portfolio = ({
       </div>
 
       {/* Article */}
-      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl break-inside-avoid">
-        <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
+      <div className="print-card mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl break-inside-avoid">
+        <h2 className="print-h2 text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Article (EN)
         </h2>
-        <div className="space-y-4 text-slate-200 leading-relaxed">
+        <div className="print-body space-y-4 text-slate-200 leading-relaxed">
           {paragraphsEn.map((p, i) => <p key={i}>{p}</p>)}
           {!paragraphsEn.length && <p className="text-slate-500">No article.</p>}
         </div>
       </div>
 
       {/* Vocabulary */}
-      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
-        <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
+      <div className="print-card mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+        <h2 className="print-h2 text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Vocabulary
         </h2>
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="print-vocab-grid grid md:grid-cols-2 gap-4">
           {vocab.map((v, i) => (
-            <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5 break-inside-avoid">
-              <div className="text-lg font-black text-white">
+            <div key={i} className="print-vocab-item p-5 rounded-2xl bg-white/5 border border-white/5 break-inside-avoid">
+              <div className="print-vocab-word text-lg font-black text-white">
                 {v.word} {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
               </div>
-              {v.meaningZh && <div className="mt-1 text-slate-200">{v.meaningZh}</div>}
-              {v.exampleEn && <div className="mt-2 text-slate-300 text-sm">{v.exampleEn}</div>}
-              {v.exampleZh && <div className="mt-1 text-slate-400 text-sm">{v.exampleZh}</div>}
+              {v.meaningZh && <div className="print-vocab-meaning mt-1 text-slate-200">{v.meaningZh}</div>}
+              {v.exampleEn && <div className="print-vocab-ex-en mt-2 text-slate-300 text-sm">{v.exampleEn}</div>}
+              {v.exampleZh && <div className="print-vocab-ex-zh mt-1 text-slate-400 text-sm">{v.exampleZh}</div>}
             </div>
           ))}
           {!vocab.length && <div className="text-slate-500">No vocabulary.</div>}
@@ -156,22 +156,22 @@ const Portfolio = ({
       </div>
 
       {/* Quiz Review */}
-      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
-        <h2 className="text-2xl font-bold text-white mb-6 tracking-widest uppercase">
+      <div className="print-card mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+        <h2 className="print-h2 text-2xl font-bold text-white mb-6 tracking-widest uppercase">
           Quiz Review (EN)
         </h2>
 
-        <div className="space-y-6">
+        <div className="space-y-6 print-quiz-wrap">
           {reportRows.map(r => (
             <div
               key={r.idx}
-              className={`p-6 rounded-2xl border break-inside-avoid ${
+              className={`print-quiz-item p-6 rounded-2xl border break-inside-avoid ${
                 r.isCorrect ? "border-green-500/30 bg-green-900/10"
                             : "border-red-500/30 bg-red-900/10"
               }`}
             >
               <div className="flex items-start justify-between gap-4">
-                <div className="text-lg text-white font-semibold">
+                <div className="print-quiz-q text-lg text-white font-semibold">
                   <span className="text-yellow-400 font-black mr-2">
                     {String(r.idx + 1).padStart(2, "0")}
                   </span>
@@ -182,16 +182,16 @@ const Portfolio = ({
                   : <XCircle className="text-red-400 shrink-0"/>}
               </div>
 
-              <div className="mt-4 space-y-2 text-slate-200">
+              <div className="mt-4 space-y-2 text-slate-200 print-quiz-opts">
                 {(r.opts || []).map((opt, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 break-inside-avoid">
+                  <div key={i} className="print-quiz-opt flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 break-inside-avoid">
                     <div className="font-black text-slate-300">{abc[i]}.</div>
                     <div className="flex-1">{opt}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-3 text-sm text-slate-300">
+              <div className="mt-3 text-sm text-slate-300 print-quiz-meta">
                 Your answer:{" "}
                 <span className="font-bold text-white">
                   {r.userIdx != null ? abc[r.userIdx] : "-"}
@@ -232,7 +232,7 @@ const Portfolio = ({
         </button>
       </div>
 
-      {/* ✅ 列印：只印 portfolio，但保留正常分頁 */}
+      {/* ✅ 列印：緊湊省紙版 */}
       <style jsx global>{`
         @media print {
           .no-print { display: none !important; }
@@ -244,9 +244,7 @@ const Portfolio = ({
             overflow: visible !important;
           }
 
-          body * {
-            visibility: hidden !important;
-          }
+          body * { visibility: hidden !important; }
 
           #print-root,
           #print-root * {
@@ -258,16 +256,18 @@ const Portfolio = ({
             overflow: visible !important;
           }
 
-          /* ✅ 不要 absolute，讓它能自然分頁 */
           #print-root {
             position: relative !important;
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0.8cm !important;
+            padding: 0.5cm !important;   /* ✅ 整體邊距縮小 */
             background: #fff !important;
+            font-size: 12px !important; /* ✅ 全域字級縮小 */
+            line-height: 1.5 !important;
           }
 
+          /* ✅ 取消漸層字/玻璃背景 */
           #print-root [class*="text-transparent"],
           #print-root [class*="bg-clip-text"] {
             color: #000 !important;
@@ -276,7 +276,6 @@ const Portfolio = ({
             -webkit-background-clip: border-box !important;
             background-clip: border-box !important;
           }
-
           #print-root [class*="bg-"],
           #print-root [class*="backdrop-"],
           #print-root [class*="shadow"] {
@@ -284,10 +283,41 @@ const Portfolio = ({
             backdrop-filter: none !important;
             box-shadow: none !important;
           }
+          #print-root [class*="border"] { border-color: #ddd !important; }
 
-          #print-root [class*="border"] {
-            border-color: #ddd !important;
+          /* ✅ 各區塊更緊湊 */
+          .print-card {
+            padding: 10px !important;
+            margin-top: 8px !important;
+            border-radius: 10px !important;
           }
+          .print-title { font-size: 20px !important; margin-bottom: 2px !important; }
+          .print-h2 { font-size: 14px !important; margin-bottom: 6px !important; letter-spacing: .12em !important; }
+          .print-meta { font-size: 11px !important; margin-top: 2px !important; }
+          .print-student div { font-size: 11px !important; }
+          .print-score { padding: 8px !important; margin-top: 6px !important; }
+          .print-body p { margin: 0 0 6px 0 !important; }
+
+          /* ✅ Vocabulary 列印改 3 欄、每格縮小 */
+          .print-vocab-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+          }
+          .print-vocab-item {
+            padding: 6px !important;
+            border-radius: 8px !important;
+          }
+          .print-vocab-word { font-size: 12px !important; font-weight: 700 !important; }
+          .print-vocab-meaning { font-size: 11px !important; margin-top: 2px !important; }
+          .print-vocab-ex-en,
+          .print-vocab-ex-zh { font-size: 10px !important; margin-top: 2px !important; }
+
+          /* ✅ Quiz Review 列印更緊湊 */
+          .print-quiz-item { padding: 8px !important; border-radius: 8px !important; }
+          .print-quiz-q { font-size: 12px !important; }
+          .print-quiz-opts { margin-top: 4px !important; gap: 4px !important; }
+          .print-quiz-opt { padding: 4px 6px !important; font-size: 11px !important; }
+          .print-quiz-meta { font-size: 10.5px !important; margin-top: 4px !important; }
 
           * {
             print-color-adjust: exact;
