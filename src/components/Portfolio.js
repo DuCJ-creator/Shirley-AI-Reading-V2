@@ -77,12 +77,11 @@ const Portfolio = ({
   }, [quiz, answers]);
 
   const handlePrint = () => {
-    // ✅ 直接呼叫瀏覽器列印
     window.print();
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
+    <div className="portfolio-root w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
       <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -235,12 +234,73 @@ const Portfolio = ({
         </button>
       </div>
 
-      {/* ✅ 列印排版微調（避免區塊被切半） */}
+      {/* ✅ 列印模式：強制黑字白底 + 關掉透明漸層字 */}
       <style jsx global>{`
         @media print {
+          /* 不列印按鈕 */
           .no-print { display: none !important; }
+
+          /* 避免區塊被切半 */
           .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
-          body { background: white !important; }
+
+          /* 全頁白底 */
+          html, body {
+            background: #fff !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          /* Portfolio 範圍內所有文字強制黑色 */
+          .portfolio-root, .portfolio-root * {
+            color: #000 !important;
+            text-shadow: none !important;
+          }
+
+          /* 關掉透明漸層字（不然會印成透明=空白） */
+          .portfolio-root .text-transparent {
+            color: #000 !important;
+            -webkit-text-fill-color: #000 !important;
+          }
+          .portfolio-root .bg-clip-text {
+            -webkit-background-clip: initial !important;
+            background-clip: initial !important;
+            background: none !important;
+          }
+
+          /* 卡片背景全部改白，邊框淡灰 */
+          .portfolio-root .bg-slate-900\\/60,
+          .portfolio-root .bg-slate-900\\/50,
+          .portfolio-root .bg-black\\/30,
+          .portfolio-root .bg-white\\/5,
+          .portfolio-root .bg-green-900\\/10,
+          .portfolio-root .bg-red-900\\/10 {
+            background: #fff !important;
+            border-color: #ddd !important;
+            box-shadow: none !important;
+          }
+
+          /* 文字配色修正（原本黃/綠/紅在列印時可看見） */
+          .portfolio-root .text-yellow-300,
+          .portfolio-root .text-yellow-400 {
+            color: #000 !important;
+            font-weight: 700 !important;
+          }
+          .portfolio-root .text-green-300,
+          .portfolio-root .text-green-400 {
+            color: #000 !important;
+            font-weight: 700 !important;
+          }
+          .portfolio-root .text-red-400 {
+            color: #000 !important;
+            font-weight: 700 !important;
+          }
+
+          /* icon 也一起變黑 */
+          .portfolio-root svg {
+            color: #000 !important;
+            fill: #000 !important;
+          }
         }
       `}</style>
     </div>
