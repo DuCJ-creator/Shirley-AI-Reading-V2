@@ -376,15 +376,13 @@ export default function Home() {
             <MetaBadge meta={generatedData.meta} />
             <RegenerateButton />
 
-            <ReadingArticle
-              data={generatedData}
-              isZh={isZh}
-              onToggleLang={toggleLang}
-              onFinish={() => {
-                if (generatedData.quiz?.length) setStage('quiz');
-                else alert("目前尚無測驗題目（AI 可能只回傳文章）。");
-              }}
-            />
+          <ReadingArticle
+  data={generatedData}
+  isZh={isZh}
+  onToggleLang={toggleLang}
+  onFinish={() => {}}
+  hideFinish
+/>
 
             <VocabSection vocab={generatedData.vocabulary || []} />
 
@@ -396,18 +394,38 @@ export default function Home() {
           </div>
         )}
 
-        {stage === 'quiz' && generatedData && (
-          <div className="py-12 w-full px-4">
-            <MetaBadge meta={generatedData.meta} />
-            <QuizSection
-              data={generatedData}
-              isZh={isZh}
-              onToggleLang={toggleLang}
-              onComplete={handleQuizComplete}
-            />
-          </div>
-        )}
+{stage === 'quiz' && generatedData && (
+  <div className="py-12 w-full px-4">
+    <MetaBadge meta={generatedData.meta} />
 
+    {/* ✅ 文章 + 測驗同頁 */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      
+      {/* 左：文章區（可捲動） */}
+      <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 lg:sticky lg:top-6 max-h-[80vh] overflow-auto">
+        <ReadingArticle
+          data={generatedData}
+          isZh={isZh}
+          onToggleLang={toggleLang}
+          // quiz 階段不需要 finish 行為
+          onFinish={() => {}}
+          // 如果 ReadingArticle 有 finish 按鈕，你可以之後加 prop 來隱藏（見方案B）
+        />
+      </div>
+
+      {/* 右：測驗區 */}
+<div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 max-h-[80vh] overflow-auto">
+        <QuizSection
+          data={generatedData}
+          isZh={isZh}
+          onToggleLang={toggleLang}
+          onComplete={handleQuizComplete}
+        />
+      </div>
+
+    </div>
+  </div>
+)}
         {stage === 'info' && (
           <div className="flex items-center justify-center animate-fadeIn w-full my-16 px-4">
             <form onSubmit={handleInfoSubmit} className="bg-slate-900/60 backdrop-blur-2xl p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] max-w-xl w-full border border-white/10">
