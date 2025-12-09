@@ -4,7 +4,7 @@ import React from 'react';
 import { CheckCircle, Volume2, Languages } from 'lucide-react';
 import { speak } from '@/utils/useSpeech';
 
-const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
+const ReadingArticle = ({ data, onFinish, isZh, onToggleLang, hideFinish = false }) => {
   const article = data?.article || {};
   const level = data?.meta?.level || data?.level || "Easy";
 
@@ -74,17 +74,20 @@ const ReadingArticle = ({ data, onFinish, isZh, onToggleLang }) => {
         )}
       </div>
 
-      <div className="flex justify-center">
-        <button
-          onClick={onFinish}
-          className="group relative px-12 py-4 bg-gradient-to-r from-red-700 to-red-900 rounded-full font-bold text-lg text-white shadow-[0_0_30px_rgba(185,28,28,0.4)] hover:shadow-[0_0_50px_rgba(185,28,28,0.6)] hover:scale-105 transition-all duration-300 overflow-hidden border border-red-500/30"
-        >
-          <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500 rounded-full" />
-          <span className="relative flex items-center gap-3">
-            Finish Reading <span className="opacity-70 font-normal">| 完成閱讀</span> <CheckCircle size={20} />
-          </span>
-        </button>
-      </div>
+      {/* ✅ 只有 reading 階段才顯示 Finish */}
+      {!hideFinish && (
+        <div className="flex justify-center">
+          <button
+            onClick={onFinish}
+            className="group relative px-12 py-4 bg-gradient-to-r from-red-700 to-red-900 rounded-full font-bold text-lg text-white shadow-[0_0_30px_rgba(185,28,28,0.4)] hover:shadow-[0_0_50px_rgba(185,28,28,0.6)] hover:scale-105 transition-all duration-300 overflow-hidden border border-red-500/30"
+          >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500 rounded-full" />
+            <span className="relative flex items-center gap-3">
+              Finish Reading <span className="opacity-70 font-normal">| 完成閱讀</span> <CheckCircle size={20} />
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
