@@ -79,7 +79,6 @@ JSON schema (ALL fields required):
       "exampleEn": "English example",
       "exampleZh": "繁體中文例句"
     }
-    // total 5 items
   ],
   "quiz": [
     {
@@ -90,11 +89,11 @@ JSON schema (ALL fields required):
       "answer": "A/B/C/D",
       "explanationZh": "繁體中文解釋"
     }
-    // total 5 items
   ]
 }
 
 Important:
+- Provide exactly 5 vocabulary items and 5 quiz questions.
 - paragraphsEn must be English only. paragraphsZh must be Traditional Chinese only.
 - answer MUST be a single letter: A, B, C, or D.
 - options must be full sentences.
@@ -162,7 +161,14 @@ function shuffleWithAnswer(optionsEn = [], optionsZh = [], answerLetter = "A") {
 }
 
 export async function POST(req) {
-  const { level, themeEn, themeZh } = await req.json();
+  let body = {};
+  try {
+    body = await req.json();
+  } catch {
+    body = {};
+  }
+
+  const { level, themeEn, themeZh } = body;
 
   const finalThemeEn = themeEn || "Topic";
   const finalThemeZh = themeZh || "主題";
@@ -230,7 +236,6 @@ export async function POST(req) {
 
         let optionsZh = Array.isArray(q.optionsZh) ? q.optionsZh : [];
 
-        // ✅ 先把 options 中的 A/B/C/D 前綴剝乾淨
         optionsEn = optionsEn.map(stripLeadingLabels);
         optionsZh = optionsZh.map(stripLeadingLabels);
 
@@ -238,22 +243,38 @@ export async function POST(req) {
         let ansLetter = String(ansRaw).trim().toUpperCase();
         if (!["A", "B", "C", "D"].includes(ansLetter)) ansLetter = "A";
 
-        // ✅ 強制洗牌 + 重算答案
-        const shuffled = shuffleWithAnswer(optionsEn, optionsZh, ansLetter);
+        // ✅ 只有剛好 4 個選項才洗牌（避免答案亂掉）
+        let finalOptionsEn = optionsEn;
+        let finalOptionsZh = optionsZh;
+        let finalAnswer = ansLetter;
+
+        if (optionsEn.length === 4) {
+          const shuffled = shuffleWithAnswer(optionsEn, optionsZh, ansLetter);
+          finalOptionsEn = shuffled.newOptionsEn;
+          finalOptionsZh = shuffled.newOptionsZh;
+          finalAnswer = shuffled.newAnswerLetter;
+        }
 
         return {
           ...q,
           questionEn: q.questionEn || q.question || q.q || "",
           questionZh: q.questionZh || q.question_zh || "",
-          optionsEn: shuffled.newOptionsEn,
-          optionsZh: shuffled.newOptionsZh,
-          answer: shuffled.newAnswerLetter,
+          optionsEn: finalOptionsEn,
+          optionsZh: finalOptionsZh,
+          answer: finalAnswer,
           explanationZh: q.explanationZh || q.explainZh || ""
         };
       });
     }
 
-    parsed.meta = { provider, level: finalLevel, version: BUILD_VERSION };
+    // ✅ meta 用 merge，不蓋掉 AI 給的欄位
+    parsed.meta = {
+      ...(parsed.meta || {}),
+      provider,
+      level: finalLevel,
+      version: BUILD_VERSION
+    };
+
     return NextResponse.json(parsed, { status: 200 });
 
   } catch (err) {
