@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Sparkles, User, ArrowLeft, RefreshCw } from 'lucide-react';
 import { THEMES } from '@/utils/constants';
 import { getTreeLayout, generateContent } from '@/utils/mockService';
@@ -71,6 +71,29 @@ export default function Home() {
 
   const treeLayout = getTreeLayout(THEMES);
   const isLoading = stage === 'loading';
+
+  // ✅ 月光任務連線中 Badge（新增）
+  const [lunarLinked, setLunarLinked] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const hasOpener = !!window.opener;
+    const hasParent = window.parent && window.parent !== window;
+    const linked = hasOpener || hasParent;
+
+    if (linked) {
+      setLunarLinked(true);
+      try {
+        const target = hasOpener ? window.opener : window.parent;
+        target?.postMessage(
+          { type: "LUNAR_MISSION_READY", mission: "topic-reading" },
+          "*"
+        );
+      } catch (e) {
+        console.warn("[LUNAR_READY] postMessage failed:", e);
+      }
+    }
+  }, []);
 
   const handleThemeClick = (theme) => {
     setSelectedTheme(theme);
@@ -147,41 +170,8 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
-  // =========================
-  // ✅ 新增：回報月光結果給「月光寶盒」
-  // =========================
-  const sendMissionResult = (correctCount) => {
-    const correctVal = parseInt(correctCount, 10) || 0;
-    if (correctVal <= 0) return;
-
-    const payload = {
-      type: "LUNAR_MISSION_RESULT",
-      correct: correctVal
-    };
-
-    try {
-      // 1) 月光寶盒用 window.open 開分頁 → 回給 opener
-      if (window.opener && typeof window.opener.postMessage === "function") {
-        window.opener.postMessage(payload, "*");
-      }
-
-      // 2) 若未來改用 iframe 嵌入 → 回給 parent
-      if (window.parent && window.parent !== window && typeof window.parent.postMessage === "function") {
-        window.parent.postMessage(payload, "*");
-      }
-
-      console.log("[mission] postMessage sent:", payload);
-    } catch (err) {
-      console.error("[mission] postMessage failed:", err);
-    }
-  };
-
   const handleQuizComplete = (answers, score) => {
     setQuizResults({ answers, score });
-
-    // ✅ 在這裡回報：score = 答對題數 = 月光縷數
-    sendMissionResult(score);
-
     setStage('info');
     window.scrollTo(0, 0);
   };
@@ -300,6 +290,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-slate-100 font-sans selection:bg-yellow-500/50 selection:text-white pb-20 overflow-x-hidden relative flex flex-col">
+
+      {/* ✅ 月光任務連線中 badge（新增） */}
+      {lunarLinked && (
+        <div className="no-print fixed top-4 right-4 z-[9999] px-4 py-2 rounded-full
+                        bg-slate-900/70 border border-yellow-300/40 text-yellow-200
+                        text-xs font-black tracking-widest backdrop-blur-xl shadow-xl">
+          🌙 月光任務連線中
+        </div>
+      )}
+
       <ChristmasTree />
       <Snowfall />
 
@@ -472,7 +472,6 @@ export default function Home() {
               quizScore={quizResults.score}
               answers={quizResults.answers}
               onReset={resetApp}
-              // ✅ 這裡改成真正的同主題再生
               onSameTopic={handleRegenerateSame}
             />
           </PortfolioBoundary>
