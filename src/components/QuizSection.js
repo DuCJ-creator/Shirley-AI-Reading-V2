@@ -72,6 +72,33 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
   const getQuestionZh = (q) =>
     q.questionZh || q.question_zh || "";
 
+  // ============================
+  // ✅ NEW: 回報月光任務結果
+  // ============================
+  const postMissionResult = (correctCount) => {
+    const payload = {
+      type: "LUNAR_MISSION_RESULT",
+      correct: correctCount,
+      // 你要帶更多資訊也可以：
+      // total: questions.length,
+      // topic: data?.article?.titleEn || data?.meta?.themeEn,
+    };
+
+    try {
+      // 主要給 window.open 的月光寶盒
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(payload, "*");
+      }
+
+      // 若未來改成 iframe 也會收到
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(payload, "*");
+      }
+    } catch (err) {
+      console.warn("[QuizSection] postMessage failed:", err);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto mt-10 bg-slate-900/60 p-10 md:p-14 rounded-3xl backdrop-blur-xl border border-white/10 animate-fadeIn relative shadow-2xl">
       <div className="text-center mb-12">
@@ -148,7 +175,6 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                       `}
                     >
                       <span className="relative z-10">
-                        {/* ✅ 若 option 已自帶 A/B/C/D 就不再重複顯示 */}
                         {!labeled && (
                           <span className="mr-2 font-bold">
                             {String.fromCharCode(65 + optIdx)}.
@@ -173,7 +199,6 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
                 })}
               </div>
 
-              {/* ✅ 中文模式才顯示繁中解釋 */}
               {submitted && isZh && q.explanationZh && (
                 <div className="mt-4 text-slate-300/80 text-sm leading-relaxed">
                   {q.explanationZh}
@@ -195,11 +220,19 @@ const QuizSection = ({ data, onComplete, isZh, onToggleLang }) => {
         <div className="mt-12 text-center animate-bounceIn bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-3xl border border-yellow-500/30 shadow-[0_0_50px_rgba(234,179,8,0.15)] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50"></div>
           <p className="text-slate-400 uppercase tracking-widest text-sm mb-4">Final Result</p>
+
           <div className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-8 drop-shadow-sm font-serif">
             {calculateScore()} <span className="text-4xl text-slate-600">/ {questions.length}</span>
           </div>
+
           <button
-            onClick={() => onComplete(answers, calculateScore())}
+            onClick={() => {
+              const score = calculateScore();
+              // ✅ 先回報月光寶盒
+              postMissionResult(score);
+              // ✅ 再走原本流程
+              onComplete(answers, score);
+            }}
             className="group bg-white text-slate-900 hover:bg-yellow-50 px-10 py-4 rounded-full font-bold text-lg shadow-[0_0_30px_rgba(255,255,255,0.3)] flex items-center justify-center mx-auto space-x-3 transition-all duration-300 hover:scale-105"
           >
             <span>Create Portfolio</span>
