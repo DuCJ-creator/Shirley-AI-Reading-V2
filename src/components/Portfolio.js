@@ -1,7 +1,8 @@
+// src/components/Portfolio.js
 'use client';
 
 import React, { useMemo } from "react";
-import { RefreshCw, Home, Award, CheckCircle2, XCircle } from "lucide-react";
+import { RefreshCw, Home, Award, CheckCircle2, XCircle, Printer } from "lucide-react";
 
 const Portfolio = ({
   data,
@@ -75,6 +76,11 @@ const Portfolio = ({
     });
   }, [quiz, answers]);
 
+  const handlePrint = () => {
+    // ✅ 直接呼叫瀏覽器列印
+    window.print();
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
@@ -106,6 +112,7 @@ const Portfolio = ({
           </div>
         </div>
 
+        {/* Score */}
         <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5">
           <Award className="text-yellow-400 mr-3" size={28} />
           <div className="text-center">
@@ -138,7 +145,7 @@ const Portfolio = ({
         </h2>
         <div className="grid md:grid-cols-2 gap-4">
           {vocab.map((v, i) => (
-            <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5">
+            <div key={i} className="p-5 rounded-2xl bg-white/5 border border-white/5 break-inside-avoid">
               <div className="text-lg font-black text-white">
                 {v.word} {v.pos && <span className="ml-2 text-sm text-slate-400">{v.pos}</span>}
               </div>
@@ -161,7 +168,7 @@ const Portfolio = ({
           {reportRows.map(r => (
             <div
               key={r.idx}
-              className={`p-6 rounded-2xl border ${
+              className={`p-6 rounded-2xl border break-inside-avoid ${
                 r.isCorrect ? "border-green-500/30 bg-green-900/10"
                             : "border-red-500/30 bg-red-900/10"
               }`}
@@ -173,7 +180,9 @@ const Portfolio = ({
                   </span>
                   {r.question}
                 </div>
-                {r.isCorrect ? <CheckCircle2 className="text-green-400"/> : <XCircle className="text-red-400"/>}
+                {r.isCorrect
+                  ? <CheckCircle2 className="text-green-400 shrink-0"/>
+                  : <XCircle className="text-red-400 shrink-0"/>}
               </div>
 
               <div className="mt-4 space-y-2 text-slate-200">
@@ -183,6 +192,17 @@ const Portfolio = ({
                     <div className="flex-1">{opt}</div>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-3 text-sm text-slate-300">
+                Your answer:{" "}
+                <span className="font-bold text-white">
+                  {r.userIdx != null ? abc[r.userIdx] : "-"}
+                </span>
+                {"  "}• Correct:{" "}
+                <span className="font-bold text-green-300">
+                  {abc[r.correctIdx]}
+                </span>
               </div>
             </div>
           ))}
@@ -199,6 +219,14 @@ const Portfolio = ({
         >
           <RefreshCw size={16} /> Same Topic
         </button>
+
+        <button
+          onClick={handlePrint}
+          className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-indigo-200 to-white text-slate-900 hover:from-white hover:to-yellow-50 font-bold tracking-widest uppercase transition shadow-[0_0_25px_rgba(255,255,255,0.25)]"
+        >
+          <Printer size={16} /> Print / 列印
+        </button>
+
         <button
           onClick={onReset}
           className="flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white text-slate-900 hover:bg-yellow-50 font-bold tracking-widest uppercase transition"
@@ -206,6 +234,15 @@ const Portfolio = ({
           <Home size={16} /> Home
         </button>
       </div>
+
+      {/* ✅ 列印排版微調（避免區塊被切半） */}
+      <style jsx global>{`
+        @media print {
+          .no-print { display: none !important; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+          body { background: white !important; }
+        }
+      `}</style>
     </div>
   );
 };
