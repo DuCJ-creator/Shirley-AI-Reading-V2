@@ -232,29 +232,37 @@ const Portfolio = ({
         </button>
       </div>
 
-      {/* 列印專用（超強硬覆寫版） */}
+      {/* ✅ 列印最強硬解：只印 print-root */}
       <style jsx global>{`
         @media print {
-          /* 基本：不要印按鈕 */
-          .no-print { display: none !important; }
-          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
-
-          html, body {
-            background: #fff !important;
-            color: #000 !important;
-            -webkit-text-fill-color: #000 !important;
-            text-shadow: none !important;
+          /* 先把整頁都隱藏，避免外部 no-print / transform / overflow 影響 */
+          body * {
+            visibility: hidden !important;
           }
 
-          /* ✅ Portfolio 內所有字：強制黑色 + 強制 text-fill 黑色（解 text-transparent） */
-          #print-root, #print-root * {
+          /* 只讓 portfolio 可見 */
+          #print-root,
+          #print-root * {
+            visibility: visible !important;
             color: #000 !important;
             -webkit-text-fill-color: #000 !important;
             text-shadow: none !important;
             filter: none !important;
           }
 
-          /* ✅ 所有 Tailwind 漸層/透明字效果清掉 */
+          /* 讓 portfolio 固定到頁面左上角，避免被 layout 撐出可視區外 */
+          #print-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0.8cm !important;
+            background: #fff !important;
+          }
+
+          /* 漸層/透明字全部轉黑 */
           #print-root [class*="text-transparent"],
           #print-root [class*="bg-clip-text"] {
             color: #000 !important;
@@ -264,30 +272,28 @@ const Portfolio = ({
             background-clip: border-box !important;
           }
 
-          /* ✅ 清掉玻璃/深色/陰影/blur背景，避免印出黑塊 */
+          /* 清掉玻璃/深色/blur/shadow 背景 */
           #print-root [class*="bg-"],
           #print-root [class*="backdrop-"],
-          #print-root [class*="shadow"],
-          #print-root .backdrop-blur-xl,
-          #print-root .backdrop-blur-2xl {
+          #print-root [class*="shadow"] {
             background: transparent !important;
             backdrop-filter: none !important;
             box-shadow: none !important;
           }
 
-          /* ✅ 邊框改淡灰 */
+          /* 邊框淡灰 */
           #print-root [class*="border"] {
             border-color: #ddd !important;
           }
 
-          /* ✅ icon 也別變淡 */
-          #print-root svg {
-            color: #000 !important;
-            -webkit-text-fill-color: #000 !important;
+          html, body {
+            background: #fff !important;
           }
 
-          /* 保險：讓瀏覽器照色印（即便使用者關閉背景圖） */
-          * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+          * {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
         }
       `}</style>
     </div>
