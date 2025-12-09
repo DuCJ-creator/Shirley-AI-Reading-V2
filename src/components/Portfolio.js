@@ -81,7 +81,7 @@ const Portfolio = ({
   };
 
   return (
-    <div className="portfolio-root w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
+    <div className="print-root w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
       <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -234,73 +234,45 @@ const Portfolio = ({
         </button>
       </div>
 
-      {/* ✅ 列印模式：強制黑字白底 + 關掉透明漸層字 */}
+      {/* ✅ 列印專用強制覆寫：白底黑字、去除暗色背景/陰影/blur */}
       <style jsx global>{`
         @media print {
-          /* 不列印按鈕 */
+          /* 基本 */
           .no-print { display: none !important; }
-
-          /* 避免區塊被切半 */
           .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+          body, html { background: white !important; }
 
-          /* 全頁白底 */
-          html, body {
-            background: #fff !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          /* Portfolio 範圍內所有文字強制黑色 */
-          .portfolio-root, .portfolio-root * {
+          /* ✅ 全 Portfolio 區塊一律黑字 */
+          .print-root, .print-root * {
             color: #000 !important;
             text-shadow: none !important;
           }
 
-          /* 關掉透明漸層字（不然會印成透明=空白） */
-          .portfolio-root .text-transparent {
-            color: #000 !important;
-            -webkit-text-fill-color: #000 !important;
-          }
-          .portfolio-root .bg-clip-text {
-            -webkit-background-clip: initial !important;
-            background-clip: initial !important;
-            background: none !important;
-          }
-
-          /* 卡片背景全部改白，邊框淡灰 */
-          .portfolio-root .bg-slate-900\\/60,
-          .portfolio-root .bg-slate-900\\/50,
-          .portfolio-root .bg-black\\/30,
-          .portfolio-root .bg-white\\/5,
-          .portfolio-root .bg-green-900\\/10,
-          .portfolio-root .bg-red-900\\/10 {
-            background: #fff !important;
-            border-color: #ddd !important;
+          /* ✅ 把所有深色/玻璃背景清掉 */
+          .print-root [class*="bg-"],
+          .print-root [class*="backdrop-"],
+          .print-root [class*="shadow"],
+          .print-root .backdrop-blur-xl,
+          .print-root .backdrop-blur-2xl {
+            background: transparent !important;
+            backdrop-filter: none !important;
             box-shadow: none !important;
           }
 
-          /* 文字配色修正（原本黃/綠/紅在列印時可看見） */
-          .portfolio-root .text-yellow-300,
-          .portfolio-root .text-yellow-400 {
-            color: #000 !important;
-            font-weight: 700 !important;
-          }
-          .portfolio-root .text-green-300,
-          .portfolio-root .text-green-400 {
-            color: #000 !important;
-            font-weight: 700 !important;
-          }
-          .portfolio-root .text-red-400 {
-            color: #000 !important;
-            font-weight: 700 !important;
+          /* ✅ 边框留淡灰，版面清楚 */
+          .print-root [class*="border"] {
+            border-color: #ddd !important;
           }
 
-          /* icon 也一起變黑 */
-          .portfolio-root svg {
+          /* ✅ 讓標題不要透明漸層 */
+          .print-root h1 {
             color: #000 !important;
-            fill: #000 !important;
+            -webkit-text-fill-color: #000 !important;
+            background: none !important;
           }
+
+          /* 如果瀏覽器有 "背景圖形不列印" 設定，也不會影響字 */
+          * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         }
       `}</style>
     </div>
