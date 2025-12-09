@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Sparkles, User, ArrowLeft, RefreshCw } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Sparkles, User, ArrowLeft, RefreshCw, ArrowUp } from 'lucide-react';
 import { THEMES } from '@/utils/constants';
 import { getTreeLayout, generateContent } from '@/utils/mockService';
 import { ChristmasTree, Snowfall, TreeStar } from '@/components/ChristmasElements';
@@ -288,6 +288,12 @@ export default function Home() {
     );
   };
 
+  // ✅ quiz 左欄文章頂端 ref（回到文章頂用）
+  const articleTopRef = useRef(null);
+  const scrollToArticleTop = () => {
+    articleTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="min-h-screen text-slate-100 font-sans selection:bg-yellow-500/50 selection:text-white pb-20 overflow-x-hidden relative flex flex-col">
 
@@ -371,18 +377,21 @@ export default function Home() {
           </div>
         )}
 
+        {/* ✅ reading：恢復 Finish Reading → 進 quiz */}
         {stage === 'reading' && generatedData && (
           <div className="py-12 w-full px-4">
             <MetaBadge meta={generatedData.meta} />
             <RegenerateButton />
 
-          <ReadingArticle
-  data={generatedData}
-  isZh={isZh}
-  onToggleLang={toggleLang}
-  onFinish={() => {}}
-  hideFinish
-/>
+            <ReadingArticle
+              data={generatedData}
+              isZh={isZh}
+              onToggleLang={toggleLang}
+              onFinish={() => {
+                setStage('quiz');
+                window.scrollTo(0, 0);
+              }}
+            />
 
             <VocabSection vocab={generatedData.vocabulary || []} />
 
@@ -394,38 +403,56 @@ export default function Home() {
           </div>
         )}
 
-{stage === 'quiz' && generatedData && (
-  <div className="py-12 w-full px-4">
-    <MetaBadge meta={generatedData.meta} />
+        {/* ✅ quiz：同頁文章 + Quiz + 回到文章頂 */}
+        {stage === 'quiz' && generatedData && (
+          <div className="py-12 w-full px-4">
+            <MetaBadge meta={generatedData.meta} />
 
-    {/* ✅ 文章 + 測驗同頁 */}
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      
-      {/* 左：文章區（可捲動） */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 lg:sticky lg:top-6 max-h-[80vh] overflow-auto">
-        <ReadingArticle
-          data={generatedData}
-          isZh={isZh}
-          onToggleLang={toggleLang}
-          // quiz 階段不需要 finish 行為
-          onFinish={() => {}}
-          // 如果 ReadingArticle 有 finish 按鈕，你可以之後加 prop 來隱藏（見方案B）
-        />
-      </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-      {/* 右：測驗區 */}
-<div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 max-h-[80vh] overflow-auto">
-        <QuizSection
-          data={generatedData}
-          isZh={isZh}
-          onToggleLang={toggleLang}
-          onComplete={handleQuizComplete}
-        />
-      </div>
+              {/* 左：文章區（可捲動） */}
+              <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 lg:sticky lg:top-6 max-h-[80vh] overflow-auto relative">
+                
+                {/* 回到文章頂 anchor */}
+                <div ref={articleTopRef} />
 
-    </div>
-  </div>
-)}
+                {/* ✅ 回到文章頂按鈕（sticky 在左欄上方） */}
+                <div className="sticky top-0 z-20 mb-4 flex justify-end">
+                  <button
+                    onClick={scrollToArticleTop}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black tracking-widest uppercase
+                               bg-slate-950/70 border border-white/10 text-yellow-200
+                               hover:bg-slate-900/80 hover:text-yellow-100 transition shadow"
+                    title="Back to top of article"
+                  >
+                    <ArrowUp size={14} />
+                    回到文章頂
+                  </button>
+                </div>
+
+                <ReadingArticle
+                  data={generatedData}
+                  isZh={isZh}
+                  onToggleLang={toggleLang}
+                  onFinish={() => {}}
+                  hideFinish
+                />
+              </div>
+
+              {/* 右：測驗區 */}
+              <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-5 max-h-[80vh] overflow-auto">
+                <QuizSection
+                  data={generatedData}
+                  isZh={isZh}
+                  onToggleLang={toggleLang}
+                  onComplete={handleQuizComplete}
+                />
+              </div>
+
+            </div>
+          </div>
+        )}
+
         {stage === 'info' && (
           <div className="flex items-center justify-center animate-fadeIn w-full my-16 px-4">
             <form onSubmit={handleInfoSubmit} className="bg-slate-900/60 backdrop-blur-2xl p-12 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] max-w-xl w-full border border-white/10">
