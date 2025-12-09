@@ -81,7 +81,7 @@ const Portfolio = ({
   return (
     <div id="print-root" className="print-root w-full max-w-5xl mx-auto py-10 px-4 animate-fadeIn">
       {/* Header */}
-      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl">
+      <div className="bg-slate-900/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-2xl break-inside-avoid">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
             <h1 className="text-3xl md:text-5xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400">
@@ -110,7 +110,7 @@ const Portfolio = ({
         </div>
 
         {/* Score */}
-        <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5">
+        <div className="mt-8 flex items-center justify-center bg-black/30 rounded-2xl p-6 border border-white/5 break-inside-avoid">
           <Award className="text-yellow-400 mr-3" size={28} />
           <div className="text-center">
             <div className="text-slate-400 text-xs tracking-[0.2em] uppercase">
@@ -125,7 +125,7 @@ const Portfolio = ({
       </div>
 
       {/* Article */}
-      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl">
+      <div className="mt-8 bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-10 shadow-xl break-inside-avoid">
         <h2 className="text-2xl font-bold text-white mb-4 tracking-widest uppercase">
           Article (EN)
         </h2>
@@ -184,7 +184,7 @@ const Portfolio = ({
 
               <div className="mt-4 space-y-2 text-slate-200">
                 {(r.opts || []).map((opt, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/5 break-inside-avoid">
                     <div className="font-black text-slate-300">{abc[i]}.</div>
                     <div className="flex-1">{opt}</div>
                   </div>
@@ -232,15 +232,22 @@ const Portfolio = ({
         </button>
       </div>
 
-      {/* ✅ 列印最強硬解：只印 print-root */}
+      {/* ✅ 列印：只印 portfolio，但保留正常分頁 */}
       <style jsx global>{`
         @media print {
-          /* 先把整頁都隱藏，避免外部 no-print / transform / overflow 影響 */
+          .no-print { display: none !important; }
+          .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+
+          html, body {
+            background: #fff !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+
           body * {
             visibility: hidden !important;
           }
 
-          /* 只讓 portfolio 可見 */
           #print-root,
           #print-root * {
             visibility: visible !important;
@@ -248,13 +255,12 @@ const Portfolio = ({
             -webkit-text-fill-color: #000 !important;
             text-shadow: none !important;
             filter: none !important;
+            overflow: visible !important;
           }
 
-          /* 讓 portfolio 固定到頁面左上角，避免被 layout 撐出可視區外 */
+          /* ✅ 不要 absolute，讓它能自然分頁 */
           #print-root {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: relative !important;
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
@@ -262,7 +268,6 @@ const Portfolio = ({
             background: #fff !important;
           }
 
-          /* 漸層/透明字全部轉黑 */
           #print-root [class*="text-transparent"],
           #print-root [class*="bg-clip-text"] {
             color: #000 !important;
@@ -272,7 +277,6 @@ const Portfolio = ({
             background-clip: border-box !important;
           }
 
-          /* 清掉玻璃/深色/blur/shadow 背景 */
           #print-root [class*="bg-"],
           #print-root [class*="backdrop-"],
           #print-root [class*="shadow"] {
@@ -281,13 +285,8 @@ const Portfolio = ({
             box-shadow: none !important;
           }
 
-          /* 邊框淡灰 */
           #print-root [class*="border"] {
             border-color: #ddd !important;
-          }
-
-          html, body {
-            background: #fff !important;
           }
 
           * {
