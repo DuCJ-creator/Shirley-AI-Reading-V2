@@ -147,8 +147,41 @@ export default function Home() {
     window.scrollTo(0, 0);
   };
 
+  // =========================
+  // ✅ 新增：回報月光結果給「月光寶盒」
+  // =========================
+  const sendMissionResult = (correctCount) => {
+    const correctVal = parseInt(correctCount, 10) || 0;
+    if (correctVal <= 0) return;
+
+    const payload = {
+      type: "LUNAR_MISSION_RESULT",
+      correct: correctVal
+    };
+
+    try {
+      // 1) 月光寶盒用 window.open 開分頁 → 回給 opener
+      if (window.opener && typeof window.opener.postMessage === "function") {
+        window.opener.postMessage(payload, "*");
+      }
+
+      // 2) 若未來改用 iframe 嵌入 → 回給 parent
+      if (window.parent && window.parent !== window && typeof window.parent.postMessage === "function") {
+        window.parent.postMessage(payload, "*");
+      }
+
+      console.log("[mission] postMessage sent:", payload);
+    } catch (err) {
+      console.error("[mission] postMessage failed:", err);
+    }
+  };
+
   const handleQuizComplete = (answers, score) => {
     setQuizResults({ answers, score });
+
+    // ✅ 在這裡回報：score = 答對題數 = 月光縷數
+    sendMissionResult(score);
+
     setStage('info');
     window.scrollTo(0, 0);
   };
